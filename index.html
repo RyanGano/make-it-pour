@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#070b18" />
+<meta name="description" content="Make it Pour - a fast, touch-friendly pouring game." />
+<title>Make it Pour</title>
+<style>
+  :root {
+    --bg-0: #070b18;
+    --ink: #eaf2ff;
+    --muted: #8fa6cc;
+    --accent: #46e3ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-0);
+    color: var(--ink);
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+  #game { display: block; width: 100%; height: 100%; touch-action: none; }
+  .overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 24px;
+    text-align: center;
+    background: radial-gradient(120% 90% at 50% 20%, rgba(16,26,53,.86), rgba(7,11,24,.96));
+    z-index: 10;
+  }
+  .overlay[hidden] { display: none; }
+  h1 {
+    font-size: clamp(38px, 12vw, 86px);
+    line-height: .95;
+    letter-spacing: -2px;
+    background: linear-gradient(180deg, #ffffff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 40px rgba(70,227,255,.25);
+  }
+  h2 { font-size: clamp(26px, 8vw, 48px); letter-spacing: -1px; }
+  p { color: var(--muted); font-size: clamp(14px, 4vw, 18px); max-width: 34ch; line-height: 1.5; }
+  .stat-row { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; }
+  .stat { display: flex; flex-direction: column; gap: 4px; }
+  .stat b { font-size: clamp(24px, 7vw, 34px); color: var(--accent); font-weight: 800; }
+  .stat span { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  button {
+    font: inherit;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #04121a;
+    background: linear-gradient(180deg, #7ff0ff, var(--accent));
+    border: 0;
+    border-radius: 999px;
+    padding: 16px 40px;
+    font-size: clamp(16px, 5vw, 20px);
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(70,227,255,.3);
+    touch-action: manipulation;
+  }
+  button:active { transform: translateY(2px); box-shadow: 0 4px 16px rgba(70,227,255,.3); }
+  .hint { font-size: 13px; color: var(--muted); }
+  .hint kbd { background: rgba(255,255,255,.1); border-radius: 5px; padding: 2px 7px; font-family: inherit; }
+  #mute {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    z-index: 20;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    font-size: 18px;
+    color: var(--ink);
+    background: rgba(255,255,255,.08);
+    box-shadow: none;
+    border-radius: 12px;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<button id="mute" title="Toggle sound" aria-label="Toggle sound">&#128266;</button>
+
+<div class="overlay" id="startScreen">
+  <h1>Make it Pour</h1>
+  <p>Drag the bottle, hold to pour. Fill every cup before the clock runs dry.</p>
+  <button id="startBtn">Start Pouring</button>
+  <p class="hint">Touch &amp; drag on mobile &middot; mouse or <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>space</kbd> on desktop</p>
+</div>
+
+<div class="overlay" id="endScreen" hidden>
+  <h2 id="endTitle">Time is Up!</h2>
+  <div class="stat-row">
+    <div class="stat"><b id="finalScore">0</b><span>Score</span></div>
+    <div class="stat"><b id="finalCups">0</b><span>Cups</span></div>
+    <div class="stat"><b id="finalBest">0</b><span>Best</span></div>
+  </div>
+  <p id="endNote">Nice pour.</p>
+  <button id="againBtn">Pour Again</button>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const startScreen = document.getElementById("startScreen");
+  const endScreen = document.getElementById("endScreen");
+
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const rand = (a, b) => a + Math.random() * (b - a);
+
+  let W = 0, H = 0;
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    clampWorld();
+  }
+
+  // ------------------------------------------------------------- audio
+  const sound = {
+    on: true,
+    ctx: null,
+    resume() {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) this.ctx = new AC();
+      }
+      if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
+    },
+    blip(freq, dur, type, gain) {
+      if (!this.on || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = type || "sine";
+      osc.frequency.setValueAtTime(freq, t);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.6, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(gain || 0.12, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(g).connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + dur + 0.02);
+    },
+    drip() { if (Math.random() < 0.25) this.blip(420 + Math.random() * 260, 0.05, "sine", 0.03); },
+    fill() { this.blip(520, 0.18, "triangle", 0.16); },
+    bonus() { this.blip(880, 0.28, "square", 0.1); },
+    over() { this.blip(180, 0.5, "sawtooth", 0.1); }
+  };
+
+  const muteBtn = document.getElementById("mute");
+  muteBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    sound.on = !sound.on;
+    muteBtn.innerHTML = sound.on ? "&#128266;" : "&#128263;";
+  });
+
+  // ------------------------------------------------------------- state
+  const ROUND_TIME = 60;
+  const GRAVITY = 1500;
+  const POUR_RATE = 34;
+  const COMBO_WINDOW = 4.0;
+  const CUP_COLORS = ["#46e3ff", "#7dff9b", "#ff8fd0", "#ffb457", "#b78bff"];
+
+  let game = null;
+  let last = 0;
+  let best = 0;
+  try { best = parseInt(localStorage.getItem("makeItPourBest") || "0", 10) || 0; } catch (e) { best = 0; }
+
+  function floorY() { return H - Math.max(70, H * 0.10); }
+
+  function newGame() {
+    return {
+      running: true,
+      time: ROUND_TIME,
+      score: 0,
+      cupsFilled: 0,
+      combo: 1,
+      comboTimer: COMBO_WINDOW,
+      level: 1,
+      shake: 0,
+      bottle: { x: W / 2, y: Math.min(150, H * 0.2), tilt: 0, hue: 0 },
+      pouring: false,
+      drops: [],
+      bits: [],
+      pops: [],
+      cups: [],
+      dropCarry: 0
+    };
+  }
+
+  function clampWorld() {
+    if (!game) return;
+    game.bottle.x = clamp(game.bottle.x, 30, W - 30);
+    game.bottle.y = clamp(game.bottle.y, 60, H * 0.5);
+    for (const c of game.cups) c.x = clamp(c.x, c.w / 2, Math.max(c.w / 2, W - c.w / 2));
+  }
+
+  // ------------------------------------------------------------- cups
+  function makeCup() {
+    const golden = Math.random() < 0.12 + game.level * 0.01;
+    const w = Math.min(rand(56, 84), W * 0.28);
+    return {
+      x: rand(w, Math.max(w + 1, W - w)),
+      w,
+      h: w * 1.15,
+      fill: 0,
+      need: Math.round(rand(14, 24) + game.level * 2),
+      speed: rand(40, 80) + game.level * 14,
+      dir: Math.random() < 0.5 ? -1 : 1,
+      color: golden ? "#ffd25a" : CUP_COLORS[(Math.random() * CUP_COLORS.length) | 0],
+      golden,
+      wobble: 0,
+      pop: 0,
+      life: 0
+    };
+  }
+
+  function targetCupCount() {
+    return Math.min(5, 2 + Math.floor(game.level / 2));
+  }
+
+  // ------------------------------------------------------------- input
+  const keys = new Set();
+  const pointers = new Set();
+
+  function pointerToWorld(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function aimAt(p, pressing) {
+    if (!game || !game.running) return;
+    game.bottle.x = clamp(p.x, 30, W - 30);
+    game.bottle.y = clamp(p.y - 70, 60, H * 0.5);
+    if (pressing !== undefined) game.pouring = pressing;
+  }
+
+  canvas.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    sound.resume();
+    if (canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId);
+    pointers.add(e.pointerId);
+    aimAt(pointerToWorld(e), true);
+  });
+
+  canvas.addEventListener("pointermove", (e) => {
+    e.preventDefault();
+    const down = pointers.has(e.pointerId);
+    if (down) aimAt(pointerToWorld(e), true);
+    else if (e.pointerType === "mouse") aimAt(pointerToWorld(e), undefined);
+  });
+
+  function releasePointer(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size === 0 && game) game.pouring = keys.has("Space");
+  }
+  canvas.addEventListener("pointerup", releasePointer);
+  canvas.addEventListener("pointercancel", releasePointer);
+
+  window.addEventListener("keydown", (e) => {
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].indexOf(e.code) >= 0) e.preventDefault();
+    keys.add(e.code);
+    sound.resume();
+    if (e.code === "Space" && game && game.running) game.pouring = true;
+    if ((e.code === "Enter" || e.code === "Space") && (!startScreen.hidden || !endScreen.hidden)) start();
+  });
+  window.addEventListener("keyup", (e) => {
+    keys.delete(e.code);
+    if (e.code === "Space" && game && pointers.size === 0) game.pouring = false;
+  });
+
+  window.addEventListener("blur", () => {
+    pointers.clear();
+    keys.clear();
+    if (game) game.pouring = false;
+  });
+
+  function keyboardMove(dt) {
+    const s = 620 * dt;
+    if (keys.has("ArrowLeft")) game.bottle.x -= s;
+    if (keys.has("ArrowRight")) game.bottle.x += s;
+    if (keys.has("ArrowUp")) game.bottle.y -= s;
+    if (keys.has("ArrowDown")) game.bottle.y += s;
+  }
+
+  // ------------------------------------------------------------- update
+  function spawnDrops(dt) {
+    const b = game.bottle;
+    game.dropCarry += POUR_RATE * dt;
+    const n = Math.floor(game.dropCarry);
+    game.dropCarry -= n;
+    for (let i = 0; i < n; i++) {
+      game.drops.push({
+        x: b.x + 26 + rand(-4, 4),
+        y: b.y + 22 + rand(-3, 3),
+        vx: rand(-18, 18),
+        vy: rand(60, 130),
+        r: rand(3, 6)
+      });
+    }
+    if (n > 0) sound.drip();
+  }
+
+  function splash(x, y, color, count, power) {
+    for (let i = 0; i < count; i++) {
+      game.bits.push({
+        x, y,
+        vx: rand(-power, power),
+        vy: rand(-power * 1.1, -power * 0.2),
+        r: rand(1.5, 3.5),
+        life: rand(0.25, 0.6),
+        max: 0.6,
+        color
+      });
+    }
+  }
+
+  function popText(x, y, text, color) {
+    game.pops.push({ x, y, text, color, life: 1.1 });
+  }
+
+  function update(dt) {
+    const g = game;
+    g.time -= dt;
+    if (g.time <= 0) { g.time = 0; endGame(); return; }
+
+    g.level = 1 + Math.floor((ROUND_TIME - g.time) / 12);
+    if (keys.size) keyboardMove(dt);
+    clampWorld();
+
+    g.comboTimer -= dt;
+    if (g.comboTimer <= 0) {
+      if (g.combo > 1) g.combo -= 1;
+      g.comboTimer = COMBO_WINDOW;
+    }
+
+    g.bottle.tilt += ((g.pouring ? 0.5 : 0) - g.bottle.tilt) * Math.min(1, dt * 10);
+    g.bottle.hue = (g.bottle.hue + dt * 60) % 360;
+
+    if (g.pouring) spawnDrops(dt);
+
+    while (g.cups.length < targetCupCount()) g.cups.push(makeCup());
+    for (const c of g.cups) {
+      c.life += dt;
+      c.x += c.speed * c.dir * dt;
+      if (c.x < c.w / 2) { c.x = c.w / 2; c.dir = 1; }
+      if (c.x > W - c.w / 2) { c.x = W - c.w / 2; c.dir = -1; }
+      c.wobble *= Math.pow(0.02, dt);
+      if (c.pop > 0) c.pop -= dt;
+    }
+
+    const fy = floorY();
+    for (let i = g.drops.length - 1; i >= 0; i--) {
+      const d = g.drops[i];
+      d.vy += GRAVITY * dt;
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+
+      let consumed = false;
+      for (const c of g.cups) {
+        if (c.pop > 0) continue;
+        const rimY = fy - c.h;
+        if (d.y >= rimY && d.y <= rimY + 30 && Math.abs(d.x - c.x) < c.w / 2 - 4) {
+          c.fill++;
+          c.wobble = 1;
+          consumed = true;
+          splash(d.x, rimY, c.color, 2, 60);
+          if (c.fill >= c.need) fillCup(c);
+          break;
+        }
+      }
+      if (consumed) { g.drops.splice(i, 1); continue; }
+
+      if (d.y > fy) {
+        splash(d.x, fy, "#3b5a86", 3, 90);
+        g.drops.splice(i, 1);
+        continue;
+      }
+      if (d.x < -40 || d.x > W + 40) g.drops.splice(i, 1);
+    }
+
+    for (let i = g.bits.length - 1; i >= 0; i--) {
+      const p = g.bits[i];
+      p.vy += GRAVITY * 0.55 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) g.bits.splice(i, 1);
+    }
+    for (let i = g.pops.length - 1; i >= 0; i--) {
+      const p = g.pops[i];
+      p.y -= 46 * dt;
+      p.life -= dt;
+      if (p.life <= 0) g.pops.splice(i, 1);
+    }
+
+    for (let i = g.cups.length - 1; i >= 0; i--) {
+      const c = g.cups[i];
+      if (c.fill >= c.need && c.pop <= 0) g.cups.splice(i, 1);
+    }
+
+    if (g.shake > 0) g.shake = Math.max(0, g.shake - dt * 3);
+  }
+
+  function fillCup(c) {
+    const g = game;
+    const gain = Math.round((c.golden ? 300 : 100) * g.combo);
+    g.score += gain;
+    g.cupsFilled++;
+    g.combo = Math.min(9, g.combo + 1);
+    g.comboTimer = COMBO_WINDOW;
+    g.time = Math.min(ROUND_TIME, g.time + (c.golden ? 2.5 : 1.2));
+    g.shake = c.golden ? 0.7 : 0.35;
+    c.pop = 0.35;
+    splash(c.x, floorY() - c.h, c.color, c.golden ? 40 : 22, 220);
+    popText(c.x, floorY() - c.h - 20, "+" + gain, c.color);
+    if (c.golden) sound.bonus(); else sound.fill();
+  }
+
+  // ------------------------------------------------------------- render
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function drawBackground() {
+    const grd = ctx.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0, "#101a35");
+    grd.addColorStop(1, "#070b18");
+    ctx.fillStyle = grd;
+    ctx.fillRect(-20, -20, W + 40, H + 40);
+
+    const fy = floorY();
+    ctx.fillStyle = "rgba(70,227,255,.06)";
+    ctx.fillRect(-20, fy, W + 40, H - fy + 40);
+    ctx.strokeStyle = "rgba(70,227,255,.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, fy);
+    ctx.lineTo(W, fy);
+    ctx.stroke();
+  }
+
+  function drawBottle() {
+    const b = game.bottle;
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.tilt);
+
+    ctx.shadowColor = "rgba(70,227,255,.55)";
+    ctx.shadowBlur = 22;
+    ctx.fillStyle = "rgba(255,255,255,.14)";
+    ctx.strokeStyle = "#bfefff";
+    ctx.lineWidth = 3;
+    roundRect(-26, -34, 52, 62, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = "hsla(" + (185 + Math.sin(b.hue / 40) * 20) + ", 100%, 62%, .85)";
+    roundRect(-21, -6, 42, 30, 9);
+    ctx.fill();
+
+    ctx.fillStyle = "#bfefff";
+    roundRect(12, 16, 20, 12, 5);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawStream() {
+    if (!game.pouring) return;
+    const b = game.bottle;
+    const grd = ctx.createLinearGradient(0, b.y, 0, b.y + 90);
+    grd.addColorStop(0, "rgba(160,245,255,.85)");
+    grd.addColorStop(1, "rgba(160,245,255,0)");
+    ctx.fillStyle = grd;
+    ctx.fillRect(b.x + 21, b.y + 18, 10, 90);
+  }
+
+  function drawDrops() {
+    ctx.fillStyle = "#8ef0ff";
+    ctx.shadowColor = "rgba(70,227,255,.7)";
+    ctx.shadowBlur = 10;
+    for (const d of game.drops) {
+      ctx.beginPath();
+      ctx.ellipse(d.x, d.y, d.r * 0.8, d.r * 1.25, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+  }
+
+  function drawCups() {
+    const fy = floorY();
+    for (const c of game.cups) {
+      const t = c.pop > 0 ? 1 - c.pop / 0.35 : 0;
+      const scale = c.pop > 0 ? 1 + t * 0.5 : 1;
+      const alpha = c.pop > 0 ? Math.max(0, 1 - t) : 1;
+      const topY = fy - c.h;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.translate(c.x, fy);
+      ctx.scale(scale, scale);
+      ctx.translate(-c.x, -fy);
+
+      const pct = clamp(c.fill / c.need, 0, 1);
+      const liquidH = (c.h - 10) * pct;
+
+      if (liquidH > 1) {
+        ctx.save();
+        roundRect(c.x - c.w / 2 + 4, topY + 6, c.w - 8, c.h - 10, 8);
+        ctx.clip();
+        ctx.fillStyle = c.color;
+        ctx.globalAlpha = alpha * 0.85;
+        const wob = Math.sin(c.life * 12) * c.wobble * 4;
+        ctx.fillRect(c.x - c.w / 2 + 4, fy - 4 - liquidH + wob, c.w - 8, liquidH + 20);
+        ctx.restore();
+      }
+
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = c.golden ? "#ffd25a" : "rgba(234,242,255,.85)";
+      ctx.lineWidth = c.golden ? 4 : 3;
+      if (c.golden) {
+        ctx.shadowColor = "rgba(255,210,90,.8)";
+        ctx.shadowBlur = 18;
+      }
+      roundRect(c.x - c.w / 2, topY, c.w, c.h, 10);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      ctx.strokeStyle = c.color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(c.x - c.w / 2 + 6, topY + 2);
+      ctx.lineTo(c.x + c.w / 2 - 6, topY + 2);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(234,242,255,.75)";
+      ctx.font = "700 12px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(Math.round(pct * 100) + "%", c.x, topY - 8);
+      ctx.restore();
+    }
+  }
+
+  function drawBits() {
+    for (const p of game.bits) {
+      ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "center";
+    ctx.font = "800 24px system-ui, sans-serif";
+    for (const p of game.pops) {
+      ctx.globalAlpha = clamp(p.life, 0, 1);
+      ctx.fillStyle = p.color;
+      ctx.fillText(p.text, p.x, p.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHud() {
+    const g = game;
+    const pad = 16;
+    const top = pad + 6;
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#eaf2ff";
+    ctx.font = "800 30px system-ui, sans-serif";
+    ctx.fillText(String(g.score), pad, top + 24);
+    ctx.font = "600 11px system-ui, sans-serif";
+    ctx.fillStyle = "#8fa6cc";
+    ctx.fillText("SCORE", pad, top + 40);
+
+    const barW = Math.min(280, W * 0.4);
+    const barX = (W - barW) / 2;
+    const barY = top + 8;
+    ctx.fillStyle = "rgba(255,255,255,.12)";
+    roundRect(barX, barY, barW, 10, 5);
+    ctx.fill();
+    const pct = g.time / ROUND_TIME;
+    ctx.fillStyle = pct < 0.2 ? "#ff6b8b" : "#46e3ff";
+    roundRect(barX, barY, Math.max(2, barW * pct), 10, 5);
+    ctx.fill();
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#8fa6cc";
+    ctx.font = "600 11px system-ui, sans-serif";
+    ctx.fillText(Math.ceil(g.time) + "s", W / 2, barY + 26);
+
+    if (g.combo > 1) {
+      ctx.fillStyle = "#ffd25a";
+      ctx.font = "800 20px system-ui, sans-serif";
+      ctx.fillText("x" + g.combo + " COMBO", W / 2, H - 18);
+    }
+  }
+
+  function render() {
+    ctx.save();
+    if (game && game.shake > 0) {
+      const s = game.shake * 8;
+      ctx.translate(rand(-s, s), rand(-s, s));
+    }
+    drawBackground();
+    if (game) {
+      drawCups();
+      drawStream();
+      drawDrops();
+      drawBits();
+      drawBottle();
+      drawHud();
+    }
+    ctx.restore();
+  }
+
+  // ------------------------------------------------------------- loop
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000 || 0);
+    last = now;
+    if (game && game.running) update(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  // ------------------------------------------------------------- flow
+  function start() {
+    sound.resume();
+    startScreen.hidden = true;
+    endScreen.hidden = true;
+    game = newGame();
+    clampWorld();
+    last = performance.now();
+  }
+
+  function endGame() {
+    game.running = false;
+    game.pouring = false;
+    sound.over();
+    const isBest = game.score > best;
+    if (isBest) {
+      best = game.score;
+      try { localStorage.setItem("makeItPourBest", String(best)); } catch (e) {}
+    }
+    document.getElementById("finalScore").textContent = game.score;
+    document.getElementById("finalCups").textContent = game.cupsFilled;
+    document.getElementById("finalBest").textContent = best;
+    document.getElementById("endTitle").textContent = isBest && game.score > 0 ? "New Best!" : "Time is Up!";
+    document.getElementById("endNote").textContent =
+      game.cupsFilled === 0 ? "Not a drop landed. Aim for the cups!" :
+      game.cupsFilled < 8 ? "Steady hands. Keep the stream on target." :
+      game.cupsFilled < 16 ? "Nice pour. Chase the golden cups for triple points." :
+      "Bartender energy. Outstanding.";
+    endScreen.hidden = false;
+  }
+
+  document.getElementById("startBtn").addEventListener("click", start);
+  document.getElementById("againBtn").addEventListener("click", start);
+
+  window.addEventListener("resize", resize);
+  window.addEventListener("orientationchange", () => setTimeout(resize, 120));
+  document.addEventListener("gesturestart", (e) => e.preventDefault());
+  document.addEventListener("dblclick", (e) => e.preventDefault());
+
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
