@@ -183,6 +183,7 @@
   const GRAVITY = 1500;
   const POUR_RATE = 34;
   const COMBO_WINDOW = 4.0;
+  const MAX_BONUS_TIME = 15;   // total seconds a round can be extended by
   const CUP_COLORS = ["#46e3ff", "#7dff9b", "#ff8fd0", "#ffb457", "#b78bff"];
 
   let game = null;
@@ -202,6 +203,7 @@
       comboTimer: COMBO_WINDOW,
       level: 1,
       shake: 0,
+      bonusTime: 0,
       bottle: { x: W / 2, y: Math.min(150, H * 0.2), tilt: 0, hue: 0 },
       pouring: false,
       drops: [],
@@ -433,7 +435,11 @@
     g.cupsFilled++;
     g.combo = Math.min(9, g.combo + 1);
     g.comboTimer = COMBO_WINDOW;
-    g.time = Math.min(ROUND_TIME, g.time + (c.golden ? 2.5 : 1.2));
+    const add = Math.min(c.golden ? 2.5 : 1.2, MAX_BONUS_TIME - g.bonusTime);
+    if (add > 0) {
+      g.bonusTime += add;
+      g.time = Math.min(ROUND_TIME, g.time + add);
+    }
     g.shake = c.golden ? 0.7 : 0.35;
     c.pop = 0.35;
     splash(c.x, floorY() - c.h, c.color, c.golden ? 40 : 22, 220);

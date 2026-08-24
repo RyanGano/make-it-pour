@@ -42,7 +42,8 @@ Then open the printed URL, e.g. <http://localhost:8000>.
 - Filling a cup raises your **combo** (up to x9) and multiplies the payout. Go too long
   without a fill and the combo ticks back down.
 - **Golden cups** are worth 3x and add more time.
-- Each fill adds a little back to the clock, so a good streak keeps the round alive.
+- Each fill adds a little back to the clock (up to 15 bonus seconds per round), so a
+  good streak keeps the round alive without making it endless.
 - The round lasts 60 seconds. Cups get faster, thirstier, and more numerous as it goes.
 
 Your best score is stored locally in the browser.
