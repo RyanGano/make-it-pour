@@ -41,10 +41,12 @@ Then open the printed URL, e.g. <http://localhost:8000>.
 - Every drop that lands in a cup fills it; a cup that hits 100% pays out and is replaced.
 - Filling a cup raises your **combo** (up to x9) and multiplies the payout. Go too long
   without a fill and the combo ticks back down.
-- **Golden cups** are worth 3x and add more time.
-- Each fill adds a little back to the clock (up to 15 bonus seconds per round), so a
-  good streak keeps the round alive without making it endless.
-- The round lasts 60 seconds. Cups get faster, thirstier, and more numerous as it goes.
+- **Golden cups** are worth 3x and add double the time.
+- Each fill adds **1 second** back to the clock, with no cap — keep landing cups and the
+  round keeps going.
+- The round starts at 60 seconds. Cups get thirstier and more numerous over time, and they
+  slide faster the longer you survive *and* the more cups you fill — so a hot streak buys
+  time while it also outruns you. That's what ends the game, not a bonus cap.
 
 Your best score is stored locally in the browser.
 

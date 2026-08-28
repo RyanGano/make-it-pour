@@ -183,7 +183,9 @@
   const GRAVITY = 1500;
   const POUR_RATE = 34;
   const COMBO_WINDOW = 4.0;
-  const MAX_BONUS_TIME = 15;   // total seconds a round can be extended by
+  const TIME_PER_CUP = 1;      // seconds added to the clock for each cup filled
+  const GOLDEN_TIME_MULT = 2;  // golden cups are worth that much clock
+  const MAX_SPEED_SCALE = 4;   // cups never get faster than this multiple
   const CUP_COLORS = ["#46e3ff", "#7dff9b", "#ff8fd0", "#ffb457", "#b78bff"];
 
   let game = null;
@@ -197,13 +199,13 @@
     return {
       running: true,
       time: ROUND_TIME,
+      elapsed: 0,
       score: 0,
       cupsFilled: 0,
       combo: 1,
       comboTimer: COMBO_WINDOW,
       level: 1,
       shake: 0,
-      bonusTime: 0,
       bottle: { x: W / 2, y: Math.min(150, H * 0.2), tilt: 0, hue: 0 },
       pouring: false,
       drops: [],
@@ -231,7 +233,7 @@
       h: w * 1.15,
       fill: 0,
       need: Math.round(rand(14, 24) + game.level * 2),
-      speed: rand(40, 80) + game.level * 14,
+      speed: rand(40, 80),
       dir: Math.random() < 0.5 ? -1 : 1,
       color: golden ? "#ffd25a" : CUP_COLORS[(Math.random() * CUP_COLORS.length) | 0],
       golden,
@@ -239,6 +241,12 @@
       pop: 0,
       life: 0
     };
+  }
+
+  // Cups get steadily quicker the longer a round runs and the more cups you land,
+  // so a good streak buys time but also races toward an ending.
+  function speedScale() {
+    return Math.min(MAX_SPEED_SCALE, 1 + game.elapsed * 0.012 + game.cupsFilled * 0.06);
   }
 
   function targetCupCount() {
@@ -348,9 +356,10 @@
   function update(dt) {
     const g = game;
     g.time -= dt;
+    g.elapsed += dt;
     if (g.time <= 0) { g.time = 0; endGame(); return; }
 
-    g.level = 1 + Math.floor((ROUND_TIME - g.time) / 12);
+    g.level = 1 + Math.floor(g.elapsed / 12);
     if (keys.size) keyboardMove(dt);
     clampWorld();
 
@@ -366,9 +375,10 @@
     if (g.pouring) spawnDrops(dt);
 
     while (g.cups.length < targetCupCount()) g.cups.push(makeCup());
+    const scale = speedScale();
     for (const c of g.cups) {
       c.life += dt;
-      c.x += c.speed * c.dir * dt;
+      c.x += c.speed * scale * c.dir * dt;
       if (c.x < c.w / 2) { c.x = c.w / 2; c.dir = 1; }
       if (c.x > W - c.w / 2) { c.x = W - c.w / 2; c.dir = -1; }
       c.wobble *= Math.pow(0.02, dt);
@@ -435,15 +445,13 @@
     g.cupsFilled++;
     g.combo = Math.min(9, g.combo + 1);
     g.comboTimer = COMBO_WINDOW;
-    const add = Math.min(c.golden ? 2.5 : 1.2, MAX_BONUS_TIME - g.bonusTime);
-    if (add > 0) {
-      g.bonusTime += add;
-      g.time = Math.min(ROUND_TIME, g.time + add);
-    }
+    const addTime = TIME_PER_CUP * (c.golden ? GOLDEN_TIME_MULT : 1);
+    g.time += addTime;
     g.shake = c.golden ? 0.7 : 0.35;
     c.pop = 0.35;
     splash(c.x, floorY() - c.h, c.color, c.golden ? 40 : 22, 220);
     popText(c.x, floorY() - c.h - 20, "+" + gain, c.color);
+    popText(c.x, floorY() - c.h - 46, "+" + addTime + "s", "#46e3ff");
     if (c.golden) sound.bonus(); else sound.fill();
   }
 
@@ -620,7 +628,7 @@
     ctx.fillStyle = "rgba(255,255,255,.12)";
     roundRect(barX, barY, barW, 10, 5);
     ctx.fill();
-    const pct = g.time / ROUND_TIME;
+    const pct = clamp(g.time / ROUND_TIME, 0, 1);
     ctx.fillStyle = pct < 0.2 ? "#ff6b8b" : "#46e3ff";
     roundRect(barX, barY, Math.max(2, barW * pct), 10, 5);
     ctx.fill();
