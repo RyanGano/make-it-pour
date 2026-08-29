@@ -47,6 +47,11 @@ switch tabs or windows mid-round.
 - **Golden cups** are worth 3x and add double the time.
 - Each fill adds **1 second** back to the clock, with no cap — keep landing cups and the
   round keeps going.
+- **Unfilled cups drain the clock faster.** The countdown runs at 1x plus 0.05x for every
+  unfilled cup on screen: one waiting cup means 1.05 seconds lost per second, two means
+  1.1x, and so on. Fill one and the rate drops straight back down. The HUD shows the
+  current rate under the timer whenever it is above 1x, so extra cups are pressure, not
+  free time.
 - The round starts at 60 seconds. Cups get thirstier and more numerous over time, and they
   slide faster the longer you survive *and* the more cups you fill — so a hot streak buys
   time while it also outruns you. That's what ends the game, not a bonus cap.

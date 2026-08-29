@@ -230,6 +230,7 @@
   const OVERFILL_TIME = 0.5;   // seconds added only if you keep pouring into a full cup
   const GOLDEN_TIME_MULT = 2;  // golden cups are worth that much clock
   const MAX_SPEED_SCALE = 4;   // cups never get faster than this multiple
+  const DRAIN_PER_UNFILLED = 0.05; // each unfilled cup on screen speeds the clock up by this much
   const CUP_COLORS = ["#46e3ff", "#7dff9b", "#ff8fd0", "#ffb457", "#b78bff"];
 
   let game = null;
@@ -293,6 +294,14 @@
   // so a good streak buys time but also races toward an ending.
   function speedScale() {
     return Math.min(MAX_SPEED_SCALE, 1 + game.elapsed * 0.012 + game.cupsFilled * 0.06);
+  }
+
+  // Clock speed: 1x plus 0.05x for every unfilled cup currently on screen, so
+  // stalling with a crowded board costs you more than clearing it.
+  function drainRate() {
+    let unfilled = 0;
+    for (const c of game.cups) if (c.fill < c.need) unfilled++;
+    return 1 + unfilled * DRAIN_PER_UNFILLED;
   }
 
   function targetCupCount() {
@@ -408,7 +417,7 @@
 
   function update(dt) {
     const g = game;
-    g.time -= dt;
+    g.time -= dt * drainRate();
     g.elapsed += dt;
     if (g.time <= 0) { g.time = 0; endGame(); return; }
 
@@ -695,6 +704,13 @@
     ctx.fillStyle = "#8fa6cc";
     ctx.font = "600 11px system-ui, sans-serif";
     ctx.fillText(Math.ceil(g.time) + "s", W / 2, barY + 26);
+
+    const rate = drainRate();
+    if (rate > 1) {
+      ctx.fillStyle = rate >= 1.15 ? "#ff6b8b" : "#ffd25a";
+      ctx.font = "700 11px system-ui, sans-serif";
+      ctx.fillText("-" + rate.toFixed(2) + "x", W / 2, barY + 42);
+    }
 
     if (g.combo > 1) {
       ctx.fillStyle = "#ffd25a";
