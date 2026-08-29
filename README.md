@@ -30,11 +30,14 @@ Then open the printed URL, e.g. <http://localhost:8000>.
 
 ## Controls
 
-| Platform | Aim | Pour |
-| --- | --- | --- |
-| Touch | Drag anywhere | Keep your finger down |
-| Mouse | Move the mouse | Hold the left button |
-| Keyboard | Arrow keys | Spacebar |
+| Platform | Aim | Pour | Pause |
+| --- | --- | --- | --- |
+| Touch | Drag anywhere | Keep your finger down | Tap the pause button |
+| Mouse | Move the mouse | Hold the left button | Click the pause button |
+| Keyboard | Arrow keys | Spacebar | <kbd>P</kbd> or <kbd>Esc</kbd> |
+
+Pausing freezes the clock and everything on screen. The game also pauses itself if you
+switch tabs or windows mid-round.
 
 ## How to score
 

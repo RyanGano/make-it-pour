@@ -75,11 +75,15 @@
   button:active { transform: translateY(2px); box-shadow: 0 4px 16px rgba(70,227,255,.3); }
   .hint { font-size: 13px; color: var(--muted); }
   .hint kbd { background: rgba(255,255,255,.1); border-radius: 5px; padding: 2px 7px; font-family: inherit; }
-  #mute {
+  #controls {
     position: fixed;
     top: max(12px, env(safe-area-inset-top));
     right: max(12px, env(safe-area-inset-right));
     z-index: 20;
+    display: flex;
+    gap: 8px;
+  }
+  #controls button {
     width: 42px;
     height: 42px;
     padding: 0;
@@ -89,17 +93,28 @@
     box-shadow: none;
     border-radius: 12px;
   }
+  #controls button[hidden] { display: none; }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<button id="mute" title="Toggle sound" aria-label="Toggle sound">&#128266;</button>
+<div id="controls">
+  <button id="pause" title="Pause" aria-label="Pause game" hidden>&#10074;&#10074;</button>
+  <button id="mute" title="Toggle sound" aria-label="Toggle sound">&#128266;</button>
+</div>
 
 <div class="overlay" id="startScreen">
   <h1>Make it Pour</h1>
   <p>Drag the bottle, hold to pour. Fill every cup before the clock runs dry.</p>
   <button id="startBtn">Start Pouring</button>
   <p class="hint">Touch &amp; drag on mobile &middot; mouse or <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>space</kbd> on desktop</p>
+</div>
+
+<div class="overlay" id="pauseScreen" hidden>
+  <h2>Paused</h2>
+  <p>The clock is on hold. Catch your breath.</p>
+  <button id="resumeBtn">Resume</button>
+  <p class="hint"><kbd>P</kbd> or <kbd>esc</kbd> to toggle pause</p>
 </div>
 
 <div class="overlay" id="endScreen" hidden>
@@ -121,6 +136,8 @@
   const ctx = canvas.getContext("2d");
   const startScreen = document.getElementById("startScreen");
   const endScreen = document.getElementById("endScreen");
+  const pauseScreen = document.getElementById("pauseScreen");
+  const pauseBtn = document.getElementById("pause");
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -198,6 +215,7 @@
   function newGame() {
     return {
       running: true,
+      paused: false,
       time: ROUND_TIME,
       elapsed: 0,
       score: 0,
@@ -264,7 +282,7 @@
   }
 
   function aimAt(p, pressing) {
-    if (!game || !game.running) return;
+    if (!game || !game.running || game.paused) return;
     game.bottle.x = clamp(p.x, 30, W - 30);
     game.bottle.y = clamp(p.y - 70, 60, H * 0.5);
     if (pressing !== undefined) game.pouring = pressing;
@@ -287,7 +305,7 @@
 
   function releasePointer(e) {
     pointers.delete(e.pointerId);
-    if (pointers.size === 0 && game) game.pouring = keys.has("Space");
+    if (pointers.size === 0 && game) game.pouring = !game.paused && keys.has("Space");
   }
   canvas.addEventListener("pointerup", releasePointer);
   canvas.addEventListener("pointercancel", releasePointer);
@@ -296,8 +314,9 @@
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].indexOf(e.code) >= 0) e.preventDefault();
     keys.add(e.code);
     sound.resume();
-    if (e.code === "Space" && game && game.running) game.pouring = true;
+    if (e.code === "Space" && game && game.running && !game.paused) game.pouring = true;
     if ((e.code === "Enter" || e.code === "Space") && (!startScreen.hidden || !endScreen.hidden)) start();
+    if (e.code === "KeyP" || e.code === "Escape") togglePause();
   });
   window.addEventListener("keyup", (e) => {
     keys.delete(e.code);
@@ -308,6 +327,12 @@
     pointers.clear();
     keys.clear();
     if (game) game.pouring = false;
+    setPaused(true);
+  });
+
+  // Losing the tab mid-round would otherwise burn the clock in the background.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) setPaused(true);
   });
 
   function keyboardMove(dt) {
@@ -673,16 +698,41 @@
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000 || 0);
     last = now;
-    if (game && game.running) update(dt);
+    if (game && game.running && !game.paused) update(dt);
     render();
     requestAnimationFrame(frame);
   }
 
   // ------------------------------------------------------------- flow
+  function setPaused(on) {
+    if (!game || !game.running || game.paused === on) return;
+    game.paused = on;
+    if (on) {
+      game.pouring = false;
+      pointers.clear();
+    } else {
+      last = performance.now();   // don't hand the first frame the whole pause as dt
+    }
+    pauseScreen.hidden = !on;
+    pauseBtn.innerHTML = on ? "&#9654;" : "&#10074;&#10074;";
+    pauseBtn.title = on ? "Resume" : "Pause";
+    pauseBtn.setAttribute("aria-label", on ? "Resume game" : "Pause game");
+  }
+
+  function togglePause() {
+    if (!game || !game.running) return;
+    setPaused(!game.paused);
+  }
+
   function start() {
     sound.resume();
     startScreen.hidden = true;
     endScreen.hidden = true;
+    pauseScreen.hidden = true;
+    pauseBtn.hidden = false;
+    pauseBtn.innerHTML = "&#10074;&#10074;";
+    pauseBtn.title = "Pause";
+    pauseBtn.setAttribute("aria-label", "Pause game");
     game = newGame();
     clampWorld();
     last = performance.now();
@@ -691,6 +741,9 @@
   function endGame() {
     game.running = false;
     game.pouring = false;
+    game.paused = false;
+    pauseScreen.hidden = true;
+    pauseBtn.hidden = true;
     sound.over();
     const isBest = game.score > best;
     if (isBest) {
@@ -709,6 +762,8 @@
     endScreen.hidden = false;
   }
 
+  pauseBtn.addEventListener("click", (e) => { e.stopPropagation(); togglePause(); });
+  document.getElementById("resumeBtn").addEventListener("click", () => setPaused(false));
   document.getElementById("startBtn").addEventListener("click", start);
   document.getElementById("againBtn").addEventListener("click", start);
 
