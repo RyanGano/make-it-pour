@@ -94,6 +94,32 @@
     border-radius: 12px;
   }
   #controls button[hidden] { display: none; }
+  #infoScreen { justify-content: flex-start; overflow-y: auto; z-index: 15; }
+  .panel {
+    width: min(560px, 100%);
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: left;
+    background: rgba(16,26,53,.72);
+    border: 1px solid rgba(70,227,255,.25);
+    border-radius: 18px;
+    padding: clamp(18px, 5vw, 28px);
+  }
+  .panel h2 { text-align: center; }
+  .panel h3 {
+    font-size: 12px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 800;
+  }
+  .panel p, .panel li { color: var(--muted); font-size: clamp(13px, 3.6vw, 16px); line-height: 1.55; max-width: none; }
+  .panel ul { display: flex; flex-direction: column; gap: 8px; padding-left: 20px; }
+  .panel strong { color: var(--ink); }
+  .panel .privacy { border-top: 1px solid rgba(255,255,255,.1); padding-top: 14px; }
+  .panel button { align-self: center; margin-top: 4px; }
   #updateNotice {
     position: fixed;
     bottom: max(12px, env(safe-area-inset-bottom));
@@ -123,6 +149,7 @@
 <canvas id="game"></canvas>
 <div id="controls">
   <button id="pause" title="Pause" aria-label="Pause game" hidden>&#10074;&#10074;</button>
+  <button id="info" title="How to play" aria-label="How to play">&#8505;</button>
   <button id="mute" title="Toggle sound" aria-label="Toggle sound">&#128266;</button>
 </div>
 
@@ -131,6 +158,7 @@
   <p>Drag the bottle, hold to pour. Fill every cup before the clock runs dry.</p>
   <button id="startBtn">Start Pouring</button>
   <p class="hint">Touch &amp; drag on mobile &middot; mouse or <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>space</kbd> on desktop</p>
+  <p class="hint">Tap the <b>&#8505;</b> any time for the rules and the privacy note</p>
 </div>
 
 <div class="overlay" id="pauseScreen" hidden>
@@ -151,6 +179,42 @@
   <button id="againBtn">Pour Again</button>
 </div>
 
+<div class="overlay" id="infoScreen" hidden>
+  <div class="panel">
+    <h2>How to Play</h2>
+    <p>Cups slide along the floor. Move the bottle over one, pour, and keep the stream on
+      target until the cup is full.</p>
+    <h3>Controls</h3>
+    <ul>
+      <li><strong>Touch:</strong> drag anywhere &mdash; the bottle follows your finger and pours while you hold.</li>
+      <li><strong>Mouse:</strong> move to aim, hold the button to pour.</li>
+      <li><strong>Keyboard:</strong> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> to move, <kbd>space</kbd> to pour, <kbd>P</kbd> or <kbd>esc</kbd> to pause.</li>
+    </ul>
+    <h3>The Clock</h3>
+    <ul>
+      <li>A round starts at <strong>60 seconds</strong>. Filling a cup adds <strong>1 second</strong> back.</li>
+      <li>Keep pouring into a cup that is already full for a <strong>half-second bonus</strong>.</li>
+      <li>Every <strong>unfilled cup on screen drains the clock faster</strong> &mdash; the rate under the timer shows how much.</li>
+    </ul>
+    <h3>Scoring</h3>
+    <ul>
+      <li>Each filled cup is <strong>100 points</strong>; <strong>golden cups are 300</strong> and give double the time bonus.</li>
+      <li>Fills in quick succession build a <strong>combo multiplier</strong> up to x9.</li>
+      <li>Cups slide faster as the round goes on and as you fill more &mdash; a hot streak buys time and outruns you at once.</li>
+    </ul>
+    <div class="privacy">
+      <h3>Your Privacy</h3>
+      <p>This game <strong>collects nothing and sends nothing anywhere</strong>. There are no
+        accounts, no analytics, no trackers, no ads, and no server that ever sees you play.
+        Your <strong>best score is saved only in this browser</strong>, on this device, and
+        never leaves it &mdash; clearing your browser data erases it for good. The page's one
+        network request is re-fetching itself to notice when a new version has been deployed;
+        it carries no information about you.</p>
+    </div>
+    <button id="infoCloseBtn">Got It</button>
+  </div>
+</div>
+
 <div id="updateNotice" role="status" hidden>
   <span>There's an update</span><a href="#" id="updateRefresh">refresh</a>
 </div>
@@ -165,6 +229,7 @@
   const endScreen = document.getElementById("endScreen");
   const pauseScreen = document.getElementById("pauseScreen");
   const pauseBtn = document.getElementById("pause");
+  const infoScreen = document.getElementById("infoScreen");
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -350,6 +415,11 @@
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].indexOf(e.code) >= 0) e.preventDefault();
     keys.add(e.code);
     sound.resume();
+    if (!infoScreen.hidden) {
+      if (e.code === "Escape" || e.code === "KeyI" || e.code === "Enter" || e.code === "Space") closeInfo();
+      return;
+    }
+    if (e.code === "KeyI") { openInfo(); return; }
     if (e.code === "Space" && game && game.running && !game.paused) game.pouring = true;
     if ((e.code === "Enter" || e.code === "Space") && (!startScreen.hidden || !endScreen.hidden)) start();
     if (e.code === "KeyP" || e.code === "Escape") togglePause();
@@ -767,7 +837,23 @@
     setPaused(!game.paused);
   }
 
+  // Info panel. Opening it parks a live round, and the pause overlay stays out of the way
+  // underneath so only one screen is visible at a time.
+  function openInfo() {
+    if (infoScreen.hidden === false) return;
+    setPaused(true);
+    pauseScreen.hidden = true;
+    infoScreen.hidden = false;
+  }
+
+  function closeInfo() {
+    if (infoScreen.hidden) return;
+    infoScreen.hidden = true;
+    if (game && game.running && game.paused) pauseScreen.hidden = false;
+  }
+
   function start() {
+    closeInfo();
     sound.resume();
     startScreen.hidden = true;
     endScreen.hidden = true;
@@ -804,6 +890,10 @@
       "Bartender energy. Outstanding.";
     endScreen.hidden = false;
   }
+
+  document.getElementById("info").addEventListener("click", (e) => { e.stopPropagation(); openInfo(); });
+  document.getElementById("infoCloseBtn").addEventListener("click", closeInfo);
+  infoScreen.addEventListener("click", (e) => { if (e.target === infoScreen) closeInfo(); });
 
   pauseBtn.addEventListener("click", (e) => { e.stopPropagation(); togglePause(); });
   document.getElementById("resumeBtn").addEventListener("click", () => setPaused(false));

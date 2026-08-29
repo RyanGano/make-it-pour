@@ -39,6 +39,19 @@ Then open the printed URL, e.g. <http://localhost:8000>.
 Pausing freezes the clock and everything on screen. The game also pauses itself if you
 switch tabs or windows mid-round.
 
+## Info panel
+
+The **&#8505; button** in the top-right (or <kbd>I</kbd> on a keyboard) opens a panel with the
+controls, the clock rules, the scoring rules, and the privacy note. It is deliberately not
+shown on first launch, and opening it pauses a round in progress.
+
+## Privacy
+
+The game collects nothing and sends nothing anywhere: no accounts, no analytics, no trackers,
+no ads, no server that sees you play. Your best score is written to `localStorage` in your own
+browser and never leaves the device. The only network request is the page re-fetching itself
+once a minute to notice a new deploy, and it carries no information about you.
+
 ## How to score
 
 - Every drop that lands in a cup fills it; a cup that hits 100% pays out and is replaced.
