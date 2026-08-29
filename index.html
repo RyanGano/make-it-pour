@@ -94,6 +94,29 @@
     border-radius: 12px;
   }
   #controls button[hidden] { display: none; }
+  #updateNotice {
+    position: fixed;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    right: max(12px, env(safe-area-inset-right));
+    z-index: 30;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    color: var(--ink);
+    background: rgba(16,26,53,.92);
+    border: 1px solid rgba(70,227,255,.35);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+  #updateNotice[hidden] { display: none; }
+  #updateNotice a {
+    color: var(--accent);
+    font-weight: 800;
+    cursor: pointer;
+    text-decoration: underline;
+  }
 </style>
 </head>
 <body>
@@ -126,6 +149,10 @@
   </div>
   <p id="endNote">Nice pour.</p>
   <button id="againBtn">Pour Again</button>
+</div>
+
+<div id="updateNotice" role="status" hidden>
+  <span>There's an update</span><a href="#" id="updateRefresh">refresh</a>
 </div>
 
 <script>
@@ -774,6 +801,60 @@
 
   resize();
   requestAnimationFrame(frame);
+})();
+</script>
+
+<script>
+// Poll this page for a new deploy; show a refresh notice when its signature changes.
+(() => {
+  "use strict";
+  if (location.protocol === "file:") return;
+
+  const notice = document.getElementById("updateNotice");
+  const CHECK_MS = 60000;
+  let current = null;
+  let checking = false;
+  let timer = 0;
+
+  document.getElementById("updateRefresh").addEventListener("click", (e) => {
+    e.preventDefault();
+    location.reload();
+  });
+
+  function hash(text) {
+    let h = 5381;
+    for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+    return text.length + ":" + h;
+  }
+
+  async function signature() {
+    const res = await fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error("bad status " + res.status);
+    const tag = res.headers.get("etag") || res.headers.get("last-modified");
+    return tag || hash(await res.text());
+  }
+
+  async function check() {
+    if (checking || document.hidden || notice.hidden === false) return;
+    checking = true;
+    try {
+      const sig = await signature();
+      if (current === null) current = sig;
+      else if (sig !== current) {
+        notice.hidden = false;
+        clearInterval(timer);
+      }
+    } catch (err) {
+      // Offline or the host is unhappy - try again on the next tick.
+    } finally {
+      checking = false;
+    }
+  }
+
+  timer = setInterval(check, CHECK_MS);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+  window.addEventListener("focus", check);
+  check();
 })();
 </script>
 </body>

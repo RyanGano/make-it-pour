@@ -55,6 +55,9 @@ Your best score is stored locally in the browser.
 
 ## Tech
 
-Vanilla HTML/CSS/JS on a single `<canvas>` — no dependencies, no bundler, no network calls.
+Vanilla HTML/CSS/JS on a single `<canvas>` — no dependencies, no bundler. The only network
+traffic is a once-a-minute check of `index.html` itself: if its `ETag`/`Last-Modified` (or, on
+hosts that send neither, its contents) changes, a small "There's an update — refresh" notice
+appears in the bottom right. That check is skipped when the page is opened over `file:`.
 Pointer Events unify mouse and multi-touch input, and the canvas is device-pixel-ratio aware,
 so it stays crisp on high-DPI phones.
