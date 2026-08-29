@@ -73,6 +73,16 @@
     touch-action: manipulation;
   }
   button:active { transform: translateY(2px); box-shadow: 0 4px 16px rgba(70,227,255,.3); }
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  button.secondary {
+    color: var(--ink);
+    background: rgba(255,255,255,.08);
+    box-shadow: none;
+    border: 1px solid rgba(70,227,255,.35);
+  }
+  button.secondary:active { box-shadow: none; }
+  #shareNote { min-height: 1.2em; font-size: 13px; color: var(--accent); }
+  #shareNote:empty { visibility: hidden; }
   .hint { font-size: 13px; color: var(--muted); }
   .hint kbd { background: rgba(255,255,255,.1); border-radius: 5px; padding: 2px 7px; font-family: inherit; }
   #controls {
@@ -176,7 +186,11 @@
     <div class="stat"><b id="finalBest">0</b><span>Best</span></div>
   </div>
   <p id="endNote">Nice pour.</p>
-  <button id="againBtn">Pour Again</button>
+  <div class="btn-row">
+    <button id="againBtn">Pour Again</button>
+    <button id="shareBtn" class="secondary">Share</button>
+  </div>
+  <p id="shareNote" role="status"></p>
 </div>
 
 <div class="overlay" id="infoScreen" hidden>
@@ -888,7 +902,35 @@
       game.cupsFilled < 8 ? "Steady hands. Keep the stream on target." :
       game.cupsFilled < 16 ? "Nice pour. Chase the golden cups for triple points." :
       "Bartender energy. Outstanding.";
+    document.getElementById("shareNote").textContent = "";
     endScreen.hidden = false;
+  }
+
+  function shareText() {
+    const cups = game.cupsFilled;
+    return "I scored " + game.score.toLocaleString() + " in Make it Pour" +
+      " (" + cups + (cups === 1 ? " cup" : " cups") + " filled). Can you beat it?";
+  }
+
+  async function shareScore() {
+    const note = document.getElementById("shareNote");
+    const url = location.protocol === "file:" ? "" : location.href.split("#")[0];
+    const text = shareText();
+    const full = url ? text + " " + url : text;
+    if (navigator.share) {
+      try {
+        await navigator.share(url ? { title: "Make it Pour", text, url } : { title: "Make it Pour", text });
+        return;
+      } catch (e) {
+        if (e && e.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(full);
+      note.textContent = "Copied — paste it into a message.";
+      return;
+    } catch (e) {}
+    window.open("sms:?&body=" + encodeURIComponent(full), "_blank");
   }
 
   document.getElementById("info").addEventListener("click", (e) => { e.stopPropagation(); openInfo(); });
@@ -899,6 +941,7 @@
   document.getElementById("resumeBtn").addEventListener("click", () => setPaused(false));
   document.getElementById("startBtn").addEventListener("click", start);
   document.getElementById("againBtn").addEventListener("click", start);
+  document.getElementById("shareBtn").addEventListener("click", shareScore);
 
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", () => setTimeout(resize, 120));

@@ -45,11 +45,22 @@ The **&#8505; button** in the top-right (or <kbd>I</kbd> on a keyboard) opens a 
 controls, the clock rules, the scoring rules, and the privacy note. It is deliberately not
 shown on first launch, and opening it pauses a round in progress.
 
+## Sharing a score
+
+The end-of-round screen has a **Share** button next to *Pour Again*. It hands your score, the
+number of cups you filled, and the page's URL to your device's share sheet
+(`navigator.share`), so you can fire it off as a text message, or into any other app the
+sheet offers. If the browser has no share sheet, the message is copied to the clipboard
+instead ("Copied — paste it into a message."); if the clipboard is unavailable too, it falls
+back to an `sms:` link. Nothing is shared unless you tap the button, and the game never sends
+the message itself — your messaging app does.
+
 ## Privacy
 
 The game collects nothing and sends nothing anywhere: no accounts, no analytics, no trackers,
 no ads, no server that sees you play. Your best score is written to `localStorage` in your own
-browser and never leaves the device. The only network request is the page re-fetching itself
+browser and never leaves the device. The Share button only hands text to your own device's
+share sheet or clipboard when you press it — nothing is transmitted by the game. The only network request is the page re-fetching itself
 once a minute to notice a new deploy, and it carries no information about you.
 
 ## How to score
