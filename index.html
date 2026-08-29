@@ -183,7 +183,7 @@
   const GRAVITY = 1500;
   const POUR_RATE = 34;
   const COMBO_WINDOW = 4.0;
-  const TIME_PER_CUP = 1;      // seconds added to the clock for each cup filled
+  const OVERFILL_TIME = 0.5;   // seconds added only if you keep pouring into a full cup
   const GOLDEN_TIME_MULT = 2;  // golden cups are worth that much clock
   const MAX_SPEED_SCALE = 4;   // cups never get faster than this multiple
   const CUP_COLORS = ["#46e3ff", "#7dff9b", "#ff8fd0", "#ffb457", "#b78bff"];
@@ -239,6 +239,7 @@
       golden,
       wobble: 0,
       pop: 0,
+      bonused: false,
       life: 0
     };
   }
@@ -394,14 +395,13 @@
 
       let consumed = false;
       for (const c of g.cups) {
-        if (c.pop > 0) continue;
         const rimY = fy - c.h;
         if (d.y >= rimY && d.y <= rimY + 30 && Math.abs(d.x - c.x) < c.w / 2 - 4) {
-          c.fill++;
           c.wobble = 1;
           consumed = true;
           splash(d.x, rimY, c.color, 2, 60);
-          if (c.fill >= c.need) fillCup(c);
+          if (c.fill >= c.need) overfillCup(c);
+          else { c.fill++; if (c.fill >= c.need) fillCup(c); }
           break;
         }
       }
@@ -445,14 +445,21 @@
     g.cupsFilled++;
     g.combo = Math.min(9, g.combo + 1);
     g.comboTimer = COMBO_WINDOW;
-    const addTime = TIME_PER_CUP * (c.golden ? GOLDEN_TIME_MULT : 1);
-    g.time += addTime;
     g.shake = c.golden ? 0.7 : 0.35;
     c.pop = 0.35;
     splash(c.x, floorY() - c.h, c.color, c.golden ? 40 : 22, 220);
     popText(c.x, floorY() - c.h - 20, "+" + gain, c.color);
-    popText(c.x, floorY() - c.h - 46, "+" + addTime + "s", "#46e3ff");
     if (c.golden) sound.bonus(); else sound.fill();
+  }
+
+  // Extra drops that land after the cup is already full pay out the clock bonus.
+  function overfillCup(c) {
+    if (c.bonused) return;
+    c.bonused = true;
+    const addTime = OVERFILL_TIME * (c.golden ? GOLDEN_TIME_MULT : 1);
+    game.time += addTime;
+    popText(c.x, floorY() - c.h - 46, "+" + addTime + "s", "#46e3ff");
+    sound.bonus();
   }
 
   // ------------------------------------------------------------- render
