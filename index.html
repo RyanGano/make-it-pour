@@ -104,7 +104,12 @@
     border-radius: 12px;
   }
   #controls button[hidden] { display: none; }
-  #infoScreen { justify-content: flex-start; overflow-y: auto; z-index: 15; }
+  #infoScreen {
+    justify-content: flex-start;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 15;
+  }
   .panel {
     width: min(560px, 100%);
     margin: auto;
@@ -250,10 +255,22 @@
 
   let W = 0, H = 0;
 
+  // Scrolling the info panel lets mobile browsers collapse their toolbars, and iOS does
+  // not reliably fire a window resize when they slide back - visualViewport reports what
+  // is actually on screen, so the canvas never ends up taller than the visible area.
+  function viewport() {
+    const vv = window.visualViewport;
+    const w = vv && vv.width ? vv.width : window.innerWidth;
+    const h = vv && vv.height ? vv.height : window.innerHeight;
+    return { w: Math.round(w), h: Math.round(h) };
+  }
+
   function resize() {
+    const v = viewport();
+    if (v.w === W && v.h === H && canvas.width) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = window.innerWidth;
-    H = window.innerHeight;
+    W = v.w;
+    H = v.h;
     canvas.width = Math.floor(W * dpr);
     canvas.height = Math.floor(H * dpr);
     canvas.style.width = W + "px";
@@ -863,6 +880,10 @@
   function closeInfo() {
     if (infoScreen.hidden) return;
     infoScreen.hidden = true;
+    infoScreen.scrollTop = 0;
+    resize();
+    setTimeout(resize, 150);
+    setTimeout(resize, 450);
     if (game && game.running && game.paused) pauseScreen.hidden = false;
   }
 
@@ -944,6 +965,10 @@
   document.getElementById("shareBtn").addEventListener("click", shareScore);
 
   window.addEventListener("resize", resize);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", resize);
+    window.visualViewport.addEventListener("scroll", resize);
+  }
   window.addEventListener("orientationchange", () => setTimeout(resize, 120));
   document.addEventListener("gesturestart", (e) => e.preventDefault());
   document.addEventListener("dblclick", (e) => e.preventDefault());
