@@ -221,8 +221,9 @@
     </ul>
     <h3>The Clock</h3>
     <ul>
-      <li>A round starts at <strong>60 seconds</strong>. Filling a cup adds <strong>1 second</strong> back.</li>
-      <li>Keep pouring into a cup that is already full for a <strong>half-second bonus</strong>.</li>
+      <li>A round starts at <strong>60 seconds</strong>. Filling a cup scores points; the clock comes back from over pouring.</li>
+      <li>Keep pouring into a cup that is already full and <strong>every extra drop pays</strong> &mdash; a
+        <strong>half second</strong>, then a quarter, then an eighth, until a cup has given back about a second.</li>
       <li>Every <strong>unfilled cup on screen drains the clock faster</strong> &mdash; the rate under the timer shows how much.</li>
     </ul>
     <h3>Scoring</h3>
@@ -328,7 +329,8 @@
   const GRAVITY = 1500;
   const POUR_RATE = 34;
   const COMBO_WINDOW = 4.0;
-  const OVERFILL_TIME = 0.5;   // seconds added only if you keep pouring into a full cup
+  const OVERFILL_TIME = 0.5;   // seconds added the first time a drop lands in a full cup
+  const OVERFILL_MIN = 0.05;   // over pouring stops paying once a drop is worth less than this
   const GOLDEN_TIME_MULT = 2;  // golden cups are worth that much clock
   const MAX_SPEED_SCALE = 4;   // cups never get faster than this multiple
   const DRAIN_PER_UNFILLED = 0.05; // each unfilled cup on screen speeds the clock up by this much
@@ -386,7 +388,7 @@
       golden,
       wobble: 0,
       pop: 0,
-      bonused: false,
+      overfills: 0,
       life: 0
     };
   }
@@ -620,12 +622,15 @@
   }
 
   // Extra drops that land after the cup is already full pay out the clock bonus.
+  // Every one of them counts, so you can keep over pouring the same cup for as
+  // long as it is on screen; each payout is half the last so a single cup can
+  // never hand back more than double OVERFILL_TIME however hard you lean on it.
   function overfillCup(c) {
-    if (c.bonused) return;
-    c.bonused = true;
-    const addTime = OVERFILL_TIME * (c.golden ? GOLDEN_TIME_MULT : 1);
+    const addTime = OVERFILL_TIME * (c.golden ? GOLDEN_TIME_MULT : 1) / Math.pow(2, c.overfills);
+    if (addTime < OVERFILL_MIN) return;
+    c.overfills++;
     game.time += addTime;
-    popText(c.x, floorY() - c.h - 46, "+" + addTime + "s", "#46e3ff");
+    popText(c.x, floorY() - c.h - 46, "+" + Math.round(addTime * 100) / 100 + "s", "#46e3ff");
     sound.bonus();
   }
 

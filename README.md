@@ -69,8 +69,10 @@ once a minute to notice a new deploy, and it carries no information about you.
 - Filling a cup raises your **combo** (up to x9) and multiplies the payout. Go too long
   without a fill and the combo ticks back down.
 - **Golden cups** are worth 3x and add double the time.
-- Each fill adds **1 second** back to the clock, with no cap — keep landing cups and the
-  round keeps going.
+- Filling a cup only scores. The clock comes back from **over pouring**: keep the stream on a
+  cup after it is full and every extra drop that lands pays time. The first is worth **0.5s**,
+  and each one after it is worth half the last, so one cup gives back about a second (two for
+  a golden cup) no matter how long you lean on it — then the cup pops and you move on.
 - **Unfilled cups drain the clock faster.** The countdown runs at 1x plus 0.05x for every
   unfilled cup on screen: one waiting cup means 1.05 seconds lost per second, two means
   1.1x, and so on. Fill one and the rate drops straight back down. The HUD shows the
