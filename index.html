@@ -162,7 +162,22 @@
     color: var(--muted);
   }
   .tips-bar b { font-size: 28px; color: #ffd25a; font-weight: 800; }
+  .rank-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,210,90,.25);
+  }
+  .rank-bar b { display: block; font-size: 15px; color: #ffd25a; }
+  .rank-bar span { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+  .rank-next { font-size: 12px; color: var(--muted); text-align: right; max-width: 55%; }
   .up-list { display: flex; flex-direction: column; gap: 10px; }
+  .up.locked { opacity: .55; border-style: dashed; }
+  .up.locked button { background: rgba(255,210,90,.12); color: #ffd25a; }
   .up {
     display: flex;
     gap: 12px;
@@ -243,6 +258,7 @@
     <div class="stat"><b id="finalCups">0</b><span>Cups</span></div>
     <div class="stat"><b id="finalBest">0</b><span>Best</span></div>
     <div class="stat"><b id="finalTips">0</b><span>Tips</span></div>
+    <div class="stat"><b id="finalRank">1</b><span>Rank</span></div>
   </div>
   <p id="endNote">Nice pour.</p>
   <div class="btn-row">
@@ -264,24 +280,40 @@
       <li><strong>Mouse:</strong> move to aim, hold the button to pour.</li>
       <li><strong>Keyboard:</strong> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> to move, <kbd>space</kbd> to pour, <kbd>P</kbd> or <kbd>esc</kbd> to pause.</li>
     </ul>
+    <h3>Filling pays points</h3>
+    <ul>
+      <li>Each filled cup is <strong>100 points</strong>, and a <strong>golden cup is 300</strong>.</li>
+      <li>Fills in quick succession build a <strong>combo multiplier</strong> up to x9, and the
+        combo is what makes a score big.</li>
+      <li>Cups slide faster as the round goes on and as you fill more &mdash; a hot streak buys
+        time and outruns you at once.</li>
+    </ul>
+    <h3>Over pouring pays tips</h3>
+    <ul>
+      <li>Keep the stream on a cup that is <strong>already full</strong> and it pays every
+        third of a second. The first <strong>half second is free</strong> &mdash; drops still in
+        the air are not your fault &mdash; and it only pays the clock.</li>
+      <li>Stay past that and every payout hands you <strong>tips</strong> &mdash; climbing one
+        at a time, up to <strong>2</strong> a payout until <em>Bigger Tips</em> raises the cap
+        &mdash; and <strong>knocks a point off your combo</strong> each time.</li>
+      <li>So every full cup is a choice: <strong>move on for the score, or lean on it for the
+        money</strong>. You cannot have both from the same cup.</li>
+      <li>The exception: a <strong>golden cup tips you 8 just for finishing it</strong>.</li>
+    </ul>
     <h3>The Clock</h3>
     <ul>
-      <li>A round starts at <strong>60 seconds</strong>. Filling a cup scores points; the clock comes back from over pouring.</li>
-      <li>Keep the stream on a cup that is already full and it <strong>pays every fifth of a second</strong>
-        &mdash; the cup waits there while you hold it, for up to <strong>two seconds</strong> of over pouring.</li>
-      <li>Every <strong>unfilled cup on screen drains the clock faster</strong> &mdash; the rate under the timer shows how much.</li>
+      <li>A round starts at <strong>60 seconds</strong>. Over pouring is the only thing that
+        gives time back, so you cannot ignore it completely.</li>
+      <li>Every <strong>unfilled cup on screen drains the clock faster</strong> &mdash; the rate
+        under the timer shows how much.</li>
     </ul>
-    <h3>Scoring</h3>
+    <h3>Tips, rank and the back bar</h3>
     <ul>
-      <li>Each filled cup is <strong>100 points</strong>; <strong>golden cups are 300</strong> and give double the time bonus.</li>
-      <li>Fills in quick succession build a <strong>combo multiplier</strong> up to x9.</li>
-      <li>Cups slide faster as the round goes on and as you fill more &mdash; a hot streak buys time and outruns you at once.</li>
-    </ul>
-    <h3>Upgrades</h3>
-    <ul>
-      <li>Every cup you finish pays a <strong>tip</strong> &mdash; golden cups pay three.</li>
-      <li>The <strong>Upgrades</strong> button on the end screen opens the back bar, where tips
-        buy a bigger multiplier, a lower reach, a wider stream, more golden cups, and more.</li>
+      <li><strong>Tips are the money.</strong> The <strong>Upgrades</strong> button on the end
+        screen opens the back bar and spends them.</li>
+      <li><strong>Your best round's score is your rank</strong>, and rank decides what the bar
+        will sell you at all. Grind tips alone and you end up rich in front of a locked shelf;
+        chase score alone and you can afford nothing.</li>
       <li>What you buy <strong>carries into every later round</strong>, but only for this
         session: reloading the page starts everyone over on the same bar.</li>
     </ul>
@@ -302,8 +334,14 @@
   <div class="panel">
     <h2>The Back Bar</h2>
     <div class="tips-bar"><b id="tipsCount">0</b><span>tips to spend</span></div>
-    <p style="text-align:center">Finished cups earn tips. Spend them on the bar and the perks
-      stay with you for every round &mdash; until you reload the page.</p>
+    <div class="rank-bar">
+      <div><b id="rankName">Barback</b><span id="rankNum">Rank 1</span></div>
+      <div class="rank-next" id="rankNext"></div>
+    </div>
+    <p style="text-align:center"><strong>Over pouring</strong> pays the tips that buy all of
+      this, and costs you a point of combo every time. <strong>Filling</strong> pays the score
+      that earns your rank, and rank is what the bar will sell you. What you buy stays with you
+      for every round &mdash; until you reload the page.</p>
     <div class="up-list" id="upList"></div>
     <button id="shopCloseBtn">Back to the Bar</button>
   </div>
@@ -397,9 +435,12 @@
   const POUR_RATE = 34;
   const COMBO_WINDOW = 4.0;
   const OVERFILL_TIME = 0.15;      // seconds added by each over pour payout
-  const OVERFILL_INTERVAL = 0.2;   // one payout per this much time held on a full cup
+  const OVERFILL_INTERVAL = 0.3;   // one payout per this much time held on a full cup
+  const TIP_TIERS = 2;             // a payout's tips climb by one each time, up to this
+  const GOLD_FILL_TIPS = 8;        // a golden cup tips you for finishing it, over pour or not
   const OVERFILL_WINDOW = 2.0;     // a cup stops paying after this long of over pouring
   const OVERFILL_GRACE = 0.25;     // over pouring ends if no drop lands for this long
+  const OVERFILL_FREE = 0.45;      // over pouring this long is on the house: clock, no tips, no combo
   const GOLDEN_TIME_MULT = 2;  // golden cups are worth that much clock
   const MAX_SPEED_SCALE = 4;   // cups never get faster than this multiple
   const DRAIN_PER_UNFILLED = 0.05; // each unfilled cup on screen speeds the clock up by this much
@@ -411,47 +452,89 @@
   const BUBBLE_SCORE = 60;         // points a popped bubble pays, before the combo
 
   // ------------------------------------------------------------- upgrades
-  // Tips are earned by finishing cups and are spent between rounds. Everything here lives
-  // in memory only: a reload puts every player back on the same starting bar, which keeps
-  // scores comparable and keeps the game's "stores nothing about you" promise intact.
+  // The bar runs on two currencies, and no single way of playing earns both.
+  //
+  //   Tips come only from OVER pouring, and every payout knocks a point off the combo.
+  //   Score comes only from FILLING, and the combo is what makes it big.
+  //
+  // So every cup that reaches 100% is a fork: move on and keep the streak climbing, or
+  // stand there milking a cup you have already scored. Tips are the money the shop takes;
+  // your best round's score is the rank that decides what the shop will sell you. Grind
+  // either one alone and you end up short of the other, which is the point.
+  //
+  // All of it lives in memory only: a reload puts every player back on the same starting
+  // bar, which keeps scores comparable and keeps the game's "stores nothing about you"
+  // promise intact.
+  const RANKS = [
+    { at: 0,      name: "Barback" },
+    { at: 6000,   name: "Pourer" },
+    { at: 20000,  name: "Bartender" },
+    { at: 50000,  name: "Mixologist" },
+    { at: 90000,  name: "Master of the Bar" }
+  ];
+
   const UPGRADES = [
-    { id: "mult",    name: "Bigger Tips",    costs: [12, 20, 32, 50],
-      desc: "Every cup pays more.",
-      effect: (n) => "+" + (n * 20) + "% score" },
-    { id: "reach",   name: "Steady Hands",   costs: [10, 18, 30],
+    { id: "reach",   name: "Steady Hands",   rank: 1, costs: [110, 320, 780],
       desc: "Carry the bottle lower, so the stream has less air to cross.",
       effect: (n) => "+" + Math.round(n * REACH_PER_LEVEL * 100) + "% reach" },
-    { id: "pour",    name: "Wider Stream",   costs: [14, 24, 38],
-      desc: "More liquid per second out of the bottle.",
-      effect: (n) => "+" + (n * 7) + " drops/s" },
-    { id: "clock",   name: "Deep Pockets",   costs: [10, 18, 28],
+    { id: "clock",   name: "Deep Pockets",   rank: 1, costs: [100, 290, 700],
       desc: "Start the round with a longer clock.",
       effect: (n) => "+" + (n * 5) + "s to start" },
-    { id: "gold",    name: "Gold Rush",      costs: [12, 22, 36],
-      desc: "More cups come up golden - triple points, double time.",
+    { id: "tipsize", name: "Bigger Tips",    rank: 1, costs: [190, 520, 1200],
+      desc: "Payouts climb higher, and the cup waits long enough for you to get there. Worth nothing unless you stay on it.",
+      effect: (n) => "tips climb to " + (TIP_TIERS + n) + " a payout" },
+    { id: "pour",    name: "Wider Stream",   rank: 2, costs: [160, 450, 1050],
+      desc: "More liquid per second out of the bottle.",
+      effect: (n) => "+" + (n * 7) + " drops/s" },
+    { id: "sip",     name: "Long Sip",       rank: 2, costs: [220, 650],
+      desc: "A full cup pays the clock more, and keeps paying for longer, while you hold on it.",
+      effect: (n) => "+" + (n * 0.6).toFixed(1) + "s of over pour, +" + (n * 25) + "% clock" },
+    { id: "mult",    name: "Top Shelf",      rank: 3, costs: [150, 380, 880, 1900],
+      desc: "Every cup you finish is worth more points.",
+      effect: (n) => "+" + (n * 20) + "% score" },
+    { id: "gold",    name: "Gold Rush",      rank: 3, costs: [150, 410, 980],
+      desc: "More cups come up golden. They score triple, tip " + GOLD_FILL_TIPS +
+            " for the fill alone, and pay double on an over pour.",
       effect: (n) => "+" + (n * 5) + "% golden" },
-    { id: "combo",   name: "Hot Streak",     costs: [14, 24, 38],
+    { id: "combo",   name: "Hot Streak",     rank: 4, costs: [150, 400, 900],
       desc: "The combo climbs higher and takes longer to cool off.",
       effect: (n) => "x" + (9 + n) + " max, +" + (n * 0.7).toFixed(1) + "s" },
-    { id: "sip",     name: "Long Sip",       costs: [16, 28],
-      desc: "A full cup pays the clock more, and keeps paying for longer, while you hold on it.",
-      effect: (n) => "+" + (n * 0.6).toFixed(1) + "s of over pour, +" + (n * 25) + "% back" },
-    { id: "bubbles", name: "Bubble Trouble", costs: [18, 30, 46],
+    { id: "bubbles", name: "Bubble Trouble", rank: 5, costs: [250, 650, 1450],
       desc: "Bubbles drift across the bar. Pour through one to pop it for time and points.",
       effect: (n) => "one every " + BUBBLE_SPAWN[n] + "s" }
   ];
 
   let tips = 0;
+  let peakScore = 0;          // the best single round this session - it sets the rank
   const owned = Object.create(null);
   const lvl = (id) => owned[id] || 0;
 
+  // Rank is earned by scoring, never by grinding, so a pocket full of tips is still no
+  // use until you have put together a round worth the stock.
+  function rankOf(score) {
+    let r = 1;
+    for (let i = 0; i < RANKS.length; i++) if (score >= RANKS[i].at) r = i + 1;
+    return r;
+  }
+  const rank = () => rankOf(peakScore);
+  const rankName = () => RANKS[rank() - 1].name;
+  const nextRank = () => RANKS[rank()];   // undefined once you are at the top
+
   const startTime = () => ROUND_TIME + lvl("clock") * 5;
   const scoreMult = () => 1 + lvl("mult") * 0.2;
+  // The first OVERFILL_FREE seconds on a full cup are on the house: they pay the clock but
+  // no tips and cost no combo, because drops still in the air when a cup tops out are
+  // physics rather than a decision. Past that you have clearly chosen to stay, and the
+  // tips climb one a payout to the cap while the combo starts falling. So moving on the
+  // instant a cup fills earns nothing, and Bigger Tips - which raises the cap and buys the
+  // window to reach it - is worthless to anyone who will not lean on a cup.
+  const tipCap = () => TIP_TIERS + lvl("tipsize");
   const pourRate = () => POUR_RATE + lvl("pour") * 7;
   const goldChance = () => 0.12 + game.level * 0.01 + lvl("gold") * 0.05;
   const maxCombo = () => 9 + lvl("combo");
   const comboWindow = () => COMBO_WINDOW + lvl("combo") * 0.7;
-  const overfillWindow = () => OVERFILL_WINDOW + lvl("sip") * 0.6;
+  const overfillWindow = () =>
+    OVERFILL_WINDOW + lvl("sip") * 0.6 + lvl("tipsize") * OVERFILL_INTERVAL;
   const overfillPay = () => OVERFILL_TIME * (1 + lvl("sip") * 0.25);
   const bottleFloor = () => H * (BOTTLE_REACH + lvl("reach") * REACH_PER_LEVEL);
   const bubbleEvery = () => BUBBLE_SPAWN[lvl("bubbles")] || 0;
@@ -514,6 +597,7 @@
       pop: 0,
       overfillTime: 0,
       overfillPay: 0,
+      overfillPayouts: 0,
       overfillHold: 0,
       life: 0
     };
@@ -764,28 +848,52 @@
     const gain = Math.round((c.golden ? 300 : 100) * g.combo * scoreMult());
     g.score += gain;
     g.cupsFilled++;
-    g.tipsEarned += c.golden ? 3 : 1;
+    // The single exception to "filling pays score, over pouring pays tips": a golden cup
+    // tips you for finishing it. Without it a player chasing a big score would never earn
+    // enough to shop at all, and Gold Rush would have nothing to say to them.
+    if (c.golden) g.tipsEarned += GOLD_FILL_TIPS;
     g.combo = Math.min(maxCombo(), g.combo + 1);
     g.comboTimer = comboWindow();
     g.shake = c.golden ? 0.7 : 0.35;
     c.pop = 0.35;
     splash(c.x, floorY() - c.h, c.color, c.golden ? 40 : 22, 220);
     popText(c.x, floorY() - c.h - 20, "+" + gain, c.color);
+    if (c.golden) popText(c.x, floorY() - c.h - 46, "+" + GOLD_FILL_TIPS + " tips", "#ffd25a");
     if (c.golden) sound.bonus(); else sound.fill();
   }
 
-  // Drops landing in an already full cup pay the clock back on a timer rather than
-  // per drop: one payout every OVERFILL_INTERVAL for as long as you keep the stream
-  // on it, up to OVERFILL_WINDOW seconds before that cup is spent.
+  // Drops landing in an already full cup pay on a timer rather than per drop: one payout
+  // every OVERFILL_INTERVAL for as long as you keep the stream on it, up to
+  // OVERFILL_WINDOW seconds before that cup is spent.
+  //
+  // A payout is tips and clock, never points, and it costs a point of combo. That is the
+  // whole trade: the seconds and the shop money you need to make progress are bought with
+  // the multiplier that would have made this round's score big.
   function overfillCup(c) {
+    const g = game;
     if (c.overfillTime >= overfillWindow()) return;
     c.overfillHold = OVERFILL_GRACE;
     if (c.overfillPay > 0) return;
     c.overfillPay = OVERFILL_INTERVAL;
+
+    const top = floorY() - c.h;
     const addTime = overfillPay() * (c.golden ? GOLDEN_TIME_MULT : 1);
-    game.time += addTime;
-    popText(c.x, floorY() - c.h - 46, "+" + Math.round(addTime * 100) / 100 + "s", "#46e3ff");
+    g.time += addTime;
+    popText(c.x, top - 72, "+" + Math.round(addTime * 100) / 100 + "s", "#46e3ff");
     sound.bonus();
+
+    // Still inside the free window - the clock paid, nothing was charged, nothing earned.
+    if (c.overfillTime < OVERFILL_FREE) return;
+
+    c.overfillPayouts++;
+    const addTips = Math.min(c.overfillPayouts, tipCap()) * (c.golden ? 2 : 1);
+    g.tipsEarned += addTips;
+    popText(c.x, top - 46, "+" + addTips + (addTips === 1 ? " tip" : " tips"), "#ffd25a");
+
+    if (g.combo > 1) {
+      g.combo -= 1;
+      popText(c.x, top - 20, "combo -1", "#ff6b8b");
+    }
   }
 
   // Bubbles only exist once Bubble Trouble is bought. They drift across the bar at
@@ -1152,6 +1260,10 @@
     const earned = game.tipsEarned;
     tips += earned;
     game.tipsEarned = 0;
+    const wasRank = rank();
+    if (game.score > peakScore) peakScore = game.score;
+    const rankedUp = rank() > wasRank;
+    document.getElementById("finalRank").textContent = rank();
     document.getElementById("finalTips").textContent = tips;
     document.getElementById("finalScore").textContent = game.score;
     document.getElementById("finalCups").textContent = game.cupsFilled;
@@ -1163,7 +1275,8 @@
       game.cupsFilled < 16 ? "Nice pour. Chase the golden cups for triple points." :
       "Bartender energy. Outstanding.";
     document.getElementById("shareNote").textContent =
-      earned === 0 ? "" :
+      rankedUp ? "You made " + rankName() + " - the back bar has new stock." :
+      earned === 0 ? "No tips this round. Over pour a full cup to earn them." :
       earned === 1 ? "You pocketed a tip. Spend it on Upgrades." :
       "You pocketed " + earned + " tips. Spend them on Upgrades.";
     shopBtn.textContent = tips > 0 ? "Upgrades · " + tips : "Upgrades";
@@ -1172,22 +1285,35 @@
 
   // ------------------------------------------------------------- shop
   function renderShop() {
+    const r = rank();
+    const next = nextRank();
     document.getElementById("tipsCount").textContent = tips;
+    document.getElementById("rankName").textContent = rankName();
+    document.getElementById("rankNum").textContent = "Rank " + r;
+    document.getElementById("rankNext").textContent = next
+      ? "Score " + next.at.toLocaleString() + " in one round for " + next.name +
+        " (best so far " + peakScore.toLocaleString() + ")"
+      : "Top rank - the whole bar is open to you.";
+
     upList.innerHTML = "";
     for (const u of UPGRADES) {
       const n = lvl(u.id);
       const maxed = n >= u.costs.length;
+      const locked = u.rank > r;
       const cost = maxed ? 0 : u.costs[n];
 
       const row = document.createElement("div");
-      row.className = "up" + (maxed ? " maxed" : "");
+      row.className = "up" + (maxed ? " maxed" : locked ? " locked" : "");
 
       const main = document.createElement("div");
       main.className = "up-main";
       const title = document.createElement("b");
       title.textContent = u.name;
       const desc = document.createElement("p");
-      desc.textContent = u.desc + (n > 0 ? " Now: " + u.effect(n) + "." : "");
+      desc.textContent = locked
+        ? "Locked until you make " + RANKS[u.rank - 1].name + " - a round worth " +
+          RANKS[u.rank - 1].at.toLocaleString() + " points."
+        : u.desc + (n > 0 ? " Now: " + u.effect(n) + "." : "");
       const pips = document.createElement("div");
       pips.className = "pips";
       for (let i = 0; i < u.costs.length; i++) {
@@ -1203,12 +1329,15 @@
       if (maxed) {
         buy.textContent = "Maxed";
         buy.disabled = true;
+      } else if (locked) {
+        buy.textContent = "Rank " + u.rank;
+        buy.disabled = true;
       } else {
         buy.textContent = cost + (cost === 1 ? " tip" : " tips");
         buy.disabled = tips < cost;
         buy.title = "Next: " + u.effect(n + 1);
         buy.addEventListener("click", () => {
-          if (tips < cost || lvl(u.id) >= u.costs.length) return;
+          if (tips < cost || lvl(u.id) >= u.costs.length || u.rank > rank()) return;
           tips -= cost;
           owned[u.id] = n + 1;
           sound.bonus();

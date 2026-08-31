@@ -47,28 +47,70 @@ The **&#8505; button** in the top-right (or <kbd>I</kbd> on a keyboard) opens a 
 controls, the clock rules, the scoring rules, and the privacy note. It is deliberately not
 shown on first launch, and opening it pauses a round in progress.
 
-## Upgrades
+## Tips, score, and the fork between them
 
-Every cup you finish pays a **tip** — a golden cup pays three. The **Upgrades** button on the
-end screen (or <kbd>U</kbd>) opens *the back bar*, where tips buy permanent perks:
+The bar runs on **two currencies, and no single way of playing earns both**.
 
-| Upgrade | Levels | What it does |
+| | Where it comes from | What it buys |
 | --- | --- | --- |
-| Bigger Tips | 4 | +20% score per level. |
-| Steady Hands | 3 | Carry the bottle lower, so the stream has less air to cross. |
-| Wider Stream | 3 | +7 drops a second out of the bottle. |
-| Deep Pockets | 3 | +5 seconds on the starting clock. |
-| Gold Rush | 3 | +5% chance a cup comes up golden. |
-| Hot Streak | 3 | +1 to the combo cap and a longer window before it cools. |
-| Long Sip | 2 | Over pouring pays more, for longer. |
-| Bubble Trouble | 3 | Bubbles drift across the bar; pour through one to pop it for 1.5s and points. |
+| **Score** | Filling cups, multiplied by the combo | Your **rank**, which decides what the shop will *sell* you |
+| **Tips** | *Over* pouring a cup you have already filled | The upgrades themselves |
+
+Every cup that reaches 100% is the same small decision:
+
+- **Move on** and the combo climbs. Big combo, big score, big rank — and almost no money.
+- **Lean on it** and each payout hands you tips (1, then 2, then 2… for as long as you hold)
+  *and knocks a point off your combo*. Rich, and scoring badly.
+
+The first **half second** of over pouring is free: it pays the clock but costs no combo and
+earns no tips, because drops still in the air when a cup tops out are physics, not a choice.
+The one exception to the whole scheme is the **golden cup, which tips you 8 just for finishing
+it** — without it a player chasing a huge score could never afford to shop at all.
+
+Over pouring is also the **only** thing that gives clock back, so nobody can ignore it
+entirely. That is the pressure: the seconds you need to survive are bought with the multiplier
+that would have made the round worth something.
+
+## Rank and the back bar
+
+Your **best single round of the session** sets your rank, and every upgrade is gated behind
+one. Grind tips alone and you end up rich in front of a locked shelf; chase score alone and
+you can afford nothing on the open one.
+
+| Rank | Best round needed | Unlocks |
+| --- | --- | --- |
+| 1 — Barback | — | Steady Hands, Deep Pockets, Bigger Tips |
+| 2 — Pourer | 6,000 | Wider Stream, Long Sip |
+| 3 — Bartender | 20,000 | Top Shelf, Gold Rush |
+| 4 — Mixologist | 50,000 | Hot Streak |
+| 5 — Master of the Bar | 90,000 | Bubble Trouble |
+
+The **Upgrades** button on the end screen (or <kbd>U</kbd>) opens the shop:
+
+| Upgrade | Levels | Cost | What it does |
+| --- | --- | --- | --- |
+| Steady Hands | 3 | 110 / 320 / 780 | Carry the bottle lower, so the stream has less air to cross. |
+| Deep Pockets | 3 | 100 / 290 / 700 | +5 seconds on the starting clock. |
+| Bigger Tips | 3 | 190 / 520 / 1200 | Payouts climb higher, and the cup waits long enough to get there. |
+| Wider Stream | 3 | 160 / 450 / 1050 | +7 drops a second out of the bottle. |
+| Long Sip | 2 | 220 / 650 | Over pouring pays more clock, for longer. |
+| Top Shelf | 4 | 150 / 380 / 880 / 1900 | +20% score per level. |
+| Gold Rush | 3 | 150 / 410 / 980 | +5% chance a cup comes up golden. |
+| Hot Streak | 3 | 150 / 400 / 900 | +1 combo cap and a longer window before it cools. |
+| Bubble Trouble | 3 | 250 / 650 / 1450 | Bubbles drift across the bar; pour through one for 1.5s and points. |
+
+**Bigger Tips is worth nothing to a player who will not lean on a cup**, and Top Shelf is worth
+nothing to one who never stops leaning. The tree is deliberately not something a good session
+clears out by accident: it costs **15,390 tips** in total, which is roughly 20 rounds for
+someone who reads the fork well and switches lines when rank is what is blocking them, and
+considerably more for anyone who commits to one currency and stays there.
 
 The bottle's reach starts deliberately short so **Steady Hands** has somewhere to go: a fresh
 bar can only carry the bottle down to 42% of the screen, and the three levels take that to 66%.
 
-What you buy **carries into every later round of the session, but not past a reload**. Nothing
-is written to disk, so every player starts a fresh page on exactly the same bar and scores stay
-comparable. Maxing everything out costs 588 tips — roughly 25 to 30 rounds of play.
+What you buy — and your rank — **carries into every later round of the session, but not past a
+reload**. Nothing is written to disk, so every player starts a fresh page on exactly the same
+bar and scores stay comparable.
 
 ## Sharing a score
 
@@ -93,11 +135,12 @@ once a minute to notice a new deploy, and it carries no information about you.
 - Every drop that lands in a cup fills it; a cup that hits 100% pays out and is replaced.
 - Filling a cup raises your **combo** (up to x9) and multiplies the payout. Go too long
   without a fill and the combo ticks back down.
-- **Golden cups** are worth 3x and add double the time.
-- Filling a cup only scores. The clock comes back from **over pouring**: keep the stream on a
-  cup after it is full and every extra drop that lands pays time. The first is worth **0.5s**,
-  and each one after it is worth half the last, so one cup gives back about a second (two for
-  a golden cup) no matter how long you lean on it — then the cup pops and you move on.
+- **Golden cups** are worth 3x, add double the time, and are the only cup that tips you for
+  simply finishing it.
+- Filling a cup only ever scores. The clock — and every tip you will ever spend — comes back
+  from **over pouring**: keep the stream on a cup after it is full and it pays every third of
+  a second, for up to two seconds, before the cup is spent. See
+  [Tips, score, and the fork between them](#tips-score-and-the-fork-between-them).
 - **Unfilled cups drain the clock faster.** The countdown runs at 1x plus 0.05x for every
   unfilled cup on screen: one waiting cup means 1.05 seconds lost per second, two means
   1.1x, and so on. Fill one and the rate drops straight back down. The HUD shows the
@@ -107,11 +150,8 @@ once a minute to notice a new deploy, and it carries no information about you.
   slide faster the longer you survive *and* the more cups you fill — so a hot streak buys
   time while it also outruns you. That's what ends the game, not a bonus cap.
 
-- Each finished cup also pays a **tip**, the currency for [Upgrades](#upgrades). Golden cups pay
-  three.
-
-Your best score is stored locally in the browser. Tips and upgrades are not stored at all —
-they live only in the page, for as long as it is open.
+Your best score is stored locally in the browser. Tips, rank and upgrades are not stored at
+all — they live only in the page, for as long as it is open.
 
 ## Tech
 
