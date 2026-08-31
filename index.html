@@ -145,6 +145,49 @@
   .panel strong { color: var(--ink); }
   .panel .privacy { border-top: 1px solid rgba(255,255,255,.1); padding-top: 14px; }
   .panel button { align-self: center; margin-top: 4px; }
+  #shopScreen {
+    justify-content: flex-start;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-top: max(66px, calc(env(safe-area-inset-top) + 54px));
+    background: radial-gradient(120% 90% at 50% 20%, rgba(13,22,46,.97), rgba(7,11,24,.99));
+    z-index: 16;
+  }
+  .tips-bar {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    font-size: 15px;
+    color: var(--muted);
+  }
+  .tips-bar b { font-size: 28px; color: #ffd25a; font-weight: 800; }
+  .up-list { display: flex; flex-direction: column; gap: 10px; }
+  .up {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid rgba(70,227,255,.2);
+    border-radius: 14px;
+    background: rgba(255,255,255,.04);
+  }
+  .up-main { flex: 1; min-width: 0; }
+  .up-main b { display: block; font-size: 15px; color: var(--ink); }
+  .up-main p { font-size: 12.5px; margin-top: 2px; }
+  .pips { display: flex; gap: 4px; margin-top: 7px; }
+  .pip { width: 16px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.15); }
+  .pip.on { background: var(--accent); }
+  .up button {
+    padding: 11px 14px;
+    font-size: 13px;
+    border-radius: 12px;
+    min-width: 82px;
+    box-shadow: none;
+  }
+  .up button:disabled { opacity: .35; cursor: default; transform: none; }
+  .up.maxed { border-color: rgba(255,210,90,.35); }
+  .up.maxed button { background: rgba(255,210,90,.16); color: #ffd25a; }
   #updateNotice {
     position: fixed;
     bottom: max(12px, env(safe-area-inset-bottom));
@@ -199,10 +242,12 @@
     <div class="stat"><b id="finalScore">0</b><span>Score</span></div>
     <div class="stat"><b id="finalCups">0</b><span>Cups</span></div>
     <div class="stat"><b id="finalBest">0</b><span>Best</span></div>
+    <div class="stat"><b id="finalTips">0</b><span>Tips</span></div>
   </div>
   <p id="endNote">Nice pour.</p>
   <div class="btn-row">
     <button id="againBtn">Pour Again</button>
+    <button id="shopBtn" class="secondary">Upgrades</button>
     <button id="shareBtn" class="secondary">Share</button>
   </div>
   <p id="shareNote" role="status"></p>
@@ -232,6 +277,14 @@
       <li>Fills in quick succession build a <strong>combo multiplier</strong> up to x9.</li>
       <li>Cups slide faster as the round goes on and as you fill more &mdash; a hot streak buys time and outruns you at once.</li>
     </ul>
+    <h3>Upgrades</h3>
+    <ul>
+      <li>Every cup you finish pays a <strong>tip</strong> &mdash; golden cups pay three.</li>
+      <li>The <strong>Upgrades</strong> button on the end screen opens the back bar, where tips
+        buy a bigger multiplier, a lower reach, a wider stream, more golden cups, and more.</li>
+      <li>What you buy <strong>carries into every later round</strong>, but only for this
+        session: reloading the page starts everyone over on the same bar.</li>
+    </ul>
     <div class="privacy">
       <h3>Your Privacy</h3>
       <p>This game <strong>collects nothing and sends nothing anywhere</strong>. There are no
@@ -242,6 +295,17 @@
         it carries no information about you.</p>
     </div>
     <button id="infoCloseBtn">Got It</button>
+  </div>
+</div>
+
+<div class="overlay" id="shopScreen" hidden>
+  <div class="panel">
+    <h2>The Back Bar</h2>
+    <div class="tips-bar"><b id="tipsCount">0</b><span>tips to spend</span></div>
+    <p style="text-align:center">Finished cups earn tips. Spend them on the bar and the perks
+      stay with you for every round &mdash; until you reload the page.</p>
+    <div class="up-list" id="upList"></div>
+    <button id="shopCloseBtn">Back to the Bar</button>
   </div>
 </div>
 
@@ -260,6 +324,9 @@
   const pauseScreen = document.getElementById("pauseScreen");
   const pauseBtn = document.getElementById("pause");
   const infoScreen = document.getElementById("infoScreen");
+  const shopScreen = document.getElementById("shopScreen");
+  const shopBtn = document.getElementById("shopBtn");
+  const upList = document.getElementById("upList");
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -337,6 +404,57 @@
   const MAX_SPEED_SCALE = 4;   // cups never get faster than this multiple
   const DRAIN_PER_UNFILLED = 0.05; // each unfilled cup on screen speeds the clock up by this much
   const CUP_COLORS = ["#46e3ff", "#7dff9b", "#ff8fd0", "#ffb457", "#b78bff"];
+  const BOTTLE_REACH = 0.42;       // how far down the screen the bottle starts out able to go
+  const REACH_PER_LEVEL = 0.08;    // each Steady Hands level buys this much more of the screen
+  const BUBBLE_SPAWN = [0, 9, 6, 4];   // seconds between bubbles, by Bubble Trouble level
+  const BUBBLE_TIME = 1.5;         // seconds a popped bubble pays
+  const BUBBLE_SCORE = 60;         // points a popped bubble pays, before the combo
+
+  // ------------------------------------------------------------- upgrades
+  // Tips are earned by finishing cups and are spent between rounds. Everything here lives
+  // in memory only: a reload puts every player back on the same starting bar, which keeps
+  // scores comparable and keeps the game's "stores nothing about you" promise intact.
+  const UPGRADES = [
+    { id: "mult",    name: "Bigger Tips",    costs: [12, 20, 32, 50],
+      desc: "Every cup pays more.",
+      effect: (n) => "+" + (n * 20) + "% score" },
+    { id: "reach",   name: "Steady Hands",   costs: [10, 18, 30],
+      desc: "Carry the bottle lower, so the stream has less air to cross.",
+      effect: (n) => "+" + Math.round(n * REACH_PER_LEVEL * 100) + "% reach" },
+    { id: "pour",    name: "Wider Stream",   costs: [14, 24, 38],
+      desc: "More liquid per second out of the bottle.",
+      effect: (n) => "+" + (n * 7) + " drops/s" },
+    { id: "clock",   name: "Deep Pockets",   costs: [10, 18, 28],
+      desc: "Start the round with a longer clock.",
+      effect: (n) => "+" + (n * 5) + "s to start" },
+    { id: "gold",    name: "Gold Rush",      costs: [12, 22, 36],
+      desc: "More cups come up golden - triple points, double time.",
+      effect: (n) => "+" + (n * 5) + "% golden" },
+    { id: "combo",   name: "Hot Streak",     costs: [14, 24, 38],
+      desc: "The combo climbs higher and takes longer to cool off.",
+      effect: (n) => "x" + (9 + n) + " max, +" + (n * 0.7).toFixed(1) + "s" },
+    { id: "sip",     name: "Long Sip",       costs: [16, 28],
+      desc: "A full cup pays the clock more, and keeps paying for longer, while you hold on it.",
+      effect: (n) => "+" + (n * 0.6).toFixed(1) + "s of over pour, +" + (n * 25) + "% back" },
+    { id: "bubbles", name: "Bubble Trouble", costs: [18, 30, 46],
+      desc: "Bubbles drift across the bar. Pour through one to pop it for time and points.",
+      effect: (n) => "one every " + BUBBLE_SPAWN[n] + "s" }
+  ];
+
+  let tips = 0;
+  const owned = Object.create(null);
+  const lvl = (id) => owned[id] || 0;
+
+  const startTime = () => ROUND_TIME + lvl("clock") * 5;
+  const scoreMult = () => 1 + lvl("mult") * 0.2;
+  const pourRate = () => POUR_RATE + lvl("pour") * 7;
+  const goldChance = () => 0.12 + game.level * 0.01 + lvl("gold") * 0.05;
+  const maxCombo = () => 9 + lvl("combo");
+  const comboWindow = () => COMBO_WINDOW + lvl("combo") * 0.7;
+  const overfillWindow = () => OVERFILL_WINDOW + lvl("sip") * 0.6;
+  const overfillPay = () => OVERFILL_TIME * (1 + lvl("sip") * 0.25);
+  const bottleFloor = () => H * (BOTTLE_REACH + lvl("reach") * REACH_PER_LEVEL);
+  const bubbleEvery = () => BUBBLE_SPAWN[lvl("bubbles")] || 0;
 
   let game = null;
   let last = 0;
@@ -349,12 +467,13 @@
     return {
       running: true,
       paused: false,
-      time: ROUND_TIME,
+      time: startTime(),
+      startTime: startTime(),
       elapsed: 0,
       score: 0,
       cupsFilled: 0,
       combo: 1,
-      comboTimer: COMBO_WINDOW,
+      comboTimer: comboWindow(),
       level: 1,
       shake: 0,
       bottle: { x: W / 2, y: Math.min(150, H * 0.2), tilt: 0, hue: 0 },
@@ -363,6 +482,9 @@
       bits: [],
       pops: [],
       cups: [],
+      bubbles: [],
+      bubbleTimer: bubbleEvery() ? bubbleEvery() * 0.5 : 0,
+      tipsEarned: 0,
       dropCarry: 0
     };
   }
@@ -370,13 +492,13 @@
   function clampWorld() {
     if (!game) return;
     game.bottle.x = clamp(game.bottle.x, 30, W - 30);
-    game.bottle.y = clamp(game.bottle.y, 60, H * 0.5);
+    game.bottle.y = clamp(game.bottle.y, 60, bottleFloor());
     for (const c of game.cups) c.x = clamp(c.x, c.w / 2, Math.max(c.w / 2, W - c.w / 2));
   }
 
   // ------------------------------------------------------------- cups
   function makeCup() {
-    const golden = Math.random() < 0.12 + game.level * 0.01;
+    const golden = Math.random() < goldChance();
     const w = Math.min(rand(56, 84), W * 0.28);
     return {
       x: rand(w, Math.max(w + 1, W - w)),
@@ -427,7 +549,7 @@
   function aimAt(p, pressing) {
     if (!game || !game.running || game.paused) return;
     game.bottle.x = clamp(p.x, 30, W - 30);
-    game.bottle.y = clamp(p.y - 70, 60, H * 0.5);
+    game.bottle.y = clamp(p.y - 70, 60, bottleFloor());
     if (pressing !== undefined) game.pouring = pressing;
   }
 
@@ -461,7 +583,12 @@
       if (e.code === "Escape" || e.code === "KeyI" || e.code === "Enter" || e.code === "Space") closeInfo();
       return;
     }
+    if (!shopScreen.hidden) {
+      if (e.code === "Escape" || e.code === "KeyU" || e.code === "Enter") closeShop();
+      return;
+    }
     if (e.code === "KeyI") { openInfo(); return; }
+    if (e.code === "KeyU" && !endScreen.hidden) { openShop(); return; }
     if (e.code === "Space" && game && game.running && !game.paused) game.pouring = true;
     if ((e.code === "Enter" || e.code === "Space") && (!startScreen.hidden || !endScreen.hidden)) start();
     if (e.code === "KeyP" || e.code === "Escape") togglePause();
@@ -494,7 +621,7 @@
   // ------------------------------------------------------------- update
   function spawnDrops(dt) {
     const b = game.bottle;
-    game.dropCarry += POUR_RATE * dt;
+    game.dropCarry += pourRate() * dt;
     const n = Math.floor(game.dropCarry);
     game.dropCarry -= n;
     for (let i = 0; i < n; i++) {
@@ -540,13 +667,14 @@
     g.comboTimer -= dt;
     if (g.comboTimer <= 0) {
       if (g.combo > 1) g.combo -= 1;
-      g.comboTimer = COMBO_WINDOW;
+      g.comboTimer = comboWindow();
     }
 
     g.bottle.tilt += ((g.pouring ? 0.5 : 0) - g.bottle.tilt) * Math.min(1, dt * 10);
     g.bottle.hue = (g.bottle.hue + dt * 60) % 360;
 
     if (g.pouring) spawnDrops(dt);
+    updateBubbles(dt);
 
     while (g.cups.length < targetCupCount()) g.cups.push(makeCup());
     const scale = speedScale();
@@ -562,7 +690,7 @@
         c.overfillHold -= dt;
         c.overfillTime += dt;
         c.overfillPay -= dt;
-        if (c.overfillTime >= OVERFILL_WINDOW) c.overfillHold = 0;
+        if (c.overfillTime >= overfillWindow()) c.overfillHold = 0;
       } else if (c.pop > 0) {
         c.pop -= dt;
       }
@@ -576,6 +704,17 @@
       d.y += d.vy * dt;
 
       let consumed = false;
+      for (let j = g.bubbles.length - 1; j >= 0; j--) {
+        const bub = g.bubbles[j];
+        if (Math.hypot(d.x - bub.x, d.y - bub.y) < bub.r) {
+          popBubble(bub);
+          g.bubbles.splice(j, 1);
+          consumed = true;
+          break;
+        }
+      }
+      if (consumed) { g.drops.splice(i, 1); continue; }
+
       for (const c of g.cups) {
         const rimY = fy - c.h;
         if (d.y >= rimY && d.y <= rimY + 30 && Math.abs(d.x - c.x) < c.w / 2 - 4) {
@@ -622,11 +761,12 @@
 
   function fillCup(c) {
     const g = game;
-    const gain = Math.round((c.golden ? 300 : 100) * g.combo);
+    const gain = Math.round((c.golden ? 300 : 100) * g.combo * scoreMult());
     g.score += gain;
     g.cupsFilled++;
-    g.combo = Math.min(9, g.combo + 1);
-    g.comboTimer = COMBO_WINDOW;
+    g.tipsEarned += c.golden ? 3 : 1;
+    g.combo = Math.min(maxCombo(), g.combo + 1);
+    g.comboTimer = comboWindow();
     g.shake = c.golden ? 0.7 : 0.35;
     c.pop = 0.35;
     splash(c.x, floorY() - c.h, c.color, c.golden ? 40 : 22, 220);
@@ -638,13 +778,60 @@
   // per drop: one payout every OVERFILL_INTERVAL for as long as you keep the stream
   // on it, up to OVERFILL_WINDOW seconds before that cup is spent.
   function overfillCup(c) {
-    if (c.overfillTime >= OVERFILL_WINDOW) return;
+    if (c.overfillTime >= overfillWindow()) return;
     c.overfillHold = OVERFILL_GRACE;
     if (c.overfillPay > 0) return;
     c.overfillPay = OVERFILL_INTERVAL;
-    const addTime = OVERFILL_TIME * (c.golden ? GOLDEN_TIME_MULT : 1);
+    const addTime = overfillPay() * (c.golden ? GOLDEN_TIME_MULT : 1);
     game.time += addTime;
     popText(c.x, floorY() - c.h - 46, "+" + Math.round(addTime * 100) / 100 + "s", "#46e3ff");
+    sound.bonus();
+  }
+
+  // Bubbles only exist once Bubble Trouble is bought. They drift across the bar at
+  // pouring height, so catching one is a detour from the cups rather than a freebie:
+  // the clock is still draining while you chase it.
+  function makeBubble() {
+    const fromLeft = Math.random() < 0.5;
+    const r = rand(22, 34);
+    const low = Math.min(H * 0.62, floorY() - 120);
+    return {
+      x: fromLeft ? -r : W + r,
+      y: rand(Math.min(140, low), Math.max(150, low)),
+      r,
+      vx: (fromLeft ? 1 : -1) * rand(45, 85),
+      bob: Math.random() * Math.PI * 2,
+      life: 0
+    };
+  }
+
+  function updateBubbles(dt) {
+    const g = game;
+    const every = bubbleEvery();
+    if (!every) { g.bubbles.length = 0; return; }
+    g.bubbleTimer -= dt;
+    if (g.bubbleTimer <= 0 && g.bubbles.length < 3) {
+      g.bubbles.push(makeBubble());
+      g.bubbleTimer = every * rand(0.8, 1.2);
+    }
+    for (let i = g.bubbles.length - 1; i >= 0; i--) {
+      const b = g.bubbles[i];
+      b.life += dt;
+      b.bob += dt * 2.4;
+      b.x += b.vx * dt;
+      b.y += Math.sin(b.bob) * 14 * dt;
+      if (b.x < -b.r * 2 || b.x > W + b.r * 2) g.bubbles.splice(i, 1);
+    }
+  }
+
+  function popBubble(b) {
+    const g = game;
+    const gain = Math.round(BUBBLE_SCORE * g.combo * scoreMult());
+    g.score += gain;
+    g.time += BUBBLE_TIME;
+    splash(b.x, b.y, "#b7f5ff", 18, 170);
+    popText(b.x, b.y - 8, "+" + BUBBLE_TIME + "s", "#b7f5ff");
+    popText(b.x, b.y - 34, "+" + gain, "#b7f5ff");
     sound.bonus();
   }
 
@@ -783,6 +970,22 @@
     }
   }
 
+  function drawBubbles() {
+    for (const b of game.bubbles) {
+      const grd = ctx.createRadialGradient(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.1, b.x, b.y, b.r);
+      grd.addColorStop(0, "rgba(255,255,255,.55)");
+      grd.addColorStop(0.6, "rgba(160,245,255,.18)");
+      grd.addColorStop(1, "rgba(160,245,255,.05)");
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(183,245,255,.7)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
   function drawBits() {
     for (const p of game.bits) {
       ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
@@ -814,6 +1017,12 @@
     ctx.font = "600 11px system-ui, sans-serif";
     ctx.fillStyle = "#8fa6cc";
     ctx.fillText("SCORE", pad, top + 40);
+    if (g.tipsEarned > 0 || tips > 0) {
+      ctx.fillStyle = "#ffd25a";
+      ctx.font = "700 12px system-ui, sans-serif";
+      const banked = tips + g.tipsEarned;
+      ctx.fillText(banked + (banked === 1 ? " TIP" : " TIPS"), pad, top + 58);
+    }
 
     const barW = Math.min(280, W * 0.4);
     const barX = (W - barW) / 2;
@@ -821,7 +1030,7 @@
     ctx.fillStyle = "rgba(255,255,255,.12)";
     roundRect(barX, barY, barW, 10, 5);
     ctx.fill();
-    const pct = clamp(g.time / ROUND_TIME, 0, 1);
+    const pct = clamp(g.time / g.startTime, 0, 1);
     ctx.fillStyle = pct < 0.2 ? "#ff6b8b" : "#46e3ff";
     roundRect(barX, barY, Math.max(2, barW * pct), 10, 5);
     ctx.fill();
@@ -853,6 +1062,7 @@
     drawBackground();
     if (game) {
       drawCups();
+      drawBubbles();
       drawStream();
       drawDrops();
       drawBits();
@@ -913,6 +1123,7 @@
 
   function start() {
     closeInfo();
+    closeShop();
     sound.resume();
     startScreen.hidden = true;
     endScreen.hidden = true;
@@ -938,17 +1149,91 @@
       best = game.score;
       try { localStorage.setItem("makeItPourBest", String(best)); } catch (e) {}
     }
+    const earned = game.tipsEarned;
+    tips += earned;
+    game.tipsEarned = 0;
+    document.getElementById("finalTips").textContent = tips;
     document.getElementById("finalScore").textContent = game.score;
     document.getElementById("finalCups").textContent = game.cupsFilled;
     document.getElementById("finalBest").textContent = best;
     document.getElementById("endTitle").textContent = isBest && game.score > 0 ? "New Best!" : "Time is Up!";
     document.getElementById("endNote").textContent =
       game.cupsFilled === 0 ? "Not a drop landed. Aim for the cups!" :
-      game.cupsFilled < 8 ? "Steady hands. Keep the stream on target." :
+      game.cupsFilled < 8 ? "Careful now. Keep the stream on target." :
       game.cupsFilled < 16 ? "Nice pour. Chase the golden cups for triple points." :
       "Bartender energy. Outstanding.";
-    document.getElementById("shareNote").textContent = "";
+    document.getElementById("shareNote").textContent =
+      earned === 0 ? "" :
+      earned === 1 ? "You pocketed a tip. Spend it on Upgrades." :
+      "You pocketed " + earned + " tips. Spend them on Upgrades.";
+    shopBtn.textContent = tips > 0 ? "Upgrades · " + tips : "Upgrades";
     endScreen.hidden = false;
+  }
+
+  // ------------------------------------------------------------- shop
+  function renderShop() {
+    document.getElementById("tipsCount").textContent = tips;
+    upList.innerHTML = "";
+    for (const u of UPGRADES) {
+      const n = lvl(u.id);
+      const maxed = n >= u.costs.length;
+      const cost = maxed ? 0 : u.costs[n];
+
+      const row = document.createElement("div");
+      row.className = "up" + (maxed ? " maxed" : "");
+
+      const main = document.createElement("div");
+      main.className = "up-main";
+      const title = document.createElement("b");
+      title.textContent = u.name;
+      const desc = document.createElement("p");
+      desc.textContent = u.desc + (n > 0 ? " Now: " + u.effect(n) + "." : "");
+      const pips = document.createElement("div");
+      pips.className = "pips";
+      for (let i = 0; i < u.costs.length; i++) {
+        const pip = document.createElement("span");
+        pip.className = "pip" + (i < n ? " on" : "");
+        pips.appendChild(pip);
+      }
+      main.appendChild(title);
+      main.appendChild(desc);
+      main.appendChild(pips);
+
+      const buy = document.createElement("button");
+      if (maxed) {
+        buy.textContent = "Maxed";
+        buy.disabled = true;
+      } else {
+        buy.textContent = cost + (cost === 1 ? " tip" : " tips");
+        buy.disabled = tips < cost;
+        buy.title = "Next: " + u.effect(n + 1);
+        buy.addEventListener("click", () => {
+          if (tips < cost || lvl(u.id) >= u.costs.length) return;
+          tips -= cost;
+          owned[u.id] = n + 1;
+          sound.bonus();
+          renderShop();
+        });
+      }
+
+      row.appendChild(main);
+      row.appendChild(buy);
+      upList.appendChild(row);
+    }
+  }
+
+  function openShop() {
+    if (!shopScreen.hidden) return;
+    renderShop();
+    shopScreen.hidden = false;
+  }
+
+  function closeShop() {
+    if (shopScreen.hidden) return;
+    shopScreen.hidden = true;
+    shopScreen.scrollTop = 0;
+    shopBtn.textContent = tips > 0 ? "Upgrades · " + tips : "Upgrades";
+    resize();
   }
 
   function shareText() {
@@ -977,6 +1262,10 @@
     } catch (e) {}
     window.open("sms:?&body=" + encodeURIComponent(full), "_blank");
   }
+
+  shopBtn.addEventListener("click", openShop);
+  document.getElementById("shopCloseBtn").addEventListener("click", closeShop);
+  shopScreen.addEventListener("click", (e) => { if (e.target === shopScreen) closeShop(); });
 
   document.getElementById("info").addEventListener("click", (e) => { e.stopPropagation(); openInfo(); });
   document.getElementById("infoCloseBtn").addEventListener("click", closeInfo);

@@ -36,6 +36,8 @@ Then open the printed URL, e.g. <http://localhost:8000>.
 | Mouse | Move the mouse | Hold the left button | Click the pause button |
 | Keyboard | Arrow keys | Spacebar | <kbd>P</kbd> or <kbd>Esc</kbd> |
 
+<kbd>U</kbd> opens the upgrade shop from the end screen.
+
 Pausing freezes the clock and everything on screen. The game also pauses itself if you
 switch tabs or windows mid-round.
 
@@ -44,6 +46,29 @@ switch tabs or windows mid-round.
 The **&#8505; button** in the top-right (or <kbd>I</kbd> on a keyboard) opens a panel with the
 controls, the clock rules, the scoring rules, and the privacy note. It is deliberately not
 shown on first launch, and opening it pauses a round in progress.
+
+## Upgrades
+
+Every cup you finish pays a **tip** — a golden cup pays three. The **Upgrades** button on the
+end screen (or <kbd>U</kbd>) opens *the back bar*, where tips buy permanent perks:
+
+| Upgrade | Levels | What it does |
+| --- | --- | --- |
+| Bigger Tips | 4 | +20% score per level. |
+| Steady Hands | 3 | Carry the bottle lower, so the stream has less air to cross. |
+| Wider Stream | 3 | +7 drops a second out of the bottle. |
+| Deep Pockets | 3 | +5 seconds on the starting clock. |
+| Gold Rush | 3 | +5% chance a cup comes up golden. |
+| Hot Streak | 3 | +1 to the combo cap and a longer window before it cools. |
+| Long Sip | 2 | Over pouring pays more, for longer. |
+| Bubble Trouble | 3 | Bubbles drift across the bar; pour through one to pop it for 1.5s and points. |
+
+The bottle's reach starts deliberately short so **Steady Hands** has somewhere to go: a fresh
+bar can only carry the bottle down to 42% of the screen, and the three levels take that to 66%.
+
+What you buy **carries into every later round of the session, but not past a reload**. Nothing
+is written to disk, so every player starts a fresh page on exactly the same bar and scores stay
+comparable. Maxing everything out costs 588 tips — roughly 25 to 30 rounds of play.
 
 ## Sharing a score
 
@@ -82,7 +107,11 @@ once a minute to notice a new deploy, and it carries no information about you.
   slide faster the longer you survive *and* the more cups you fill — so a hot streak buys
   time while it also outruns you. That's what ends the game, not a bonus cap.
 
-Your best score is stored locally in the browser.
+- Each finished cup also pays a **tip**, the currency for [Upgrades](#upgrades). Golden cups pay
+  three.
+
+Your best score is stored locally in the browser. Tips and upgrades are not stored at all —
+they live only in the page, for as long as it is open.
 
 ## Tech
 
