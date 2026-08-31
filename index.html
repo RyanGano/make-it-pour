@@ -222,8 +222,8 @@
     <h3>The Clock</h3>
     <ul>
       <li>A round starts at <strong>60 seconds</strong>. Filling a cup scores points; the clock comes back from over pouring.</li>
-      <li>Keep pouring into a cup that is already full and <strong>every extra drop pays</strong> &mdash; a
-        <strong>half second</strong>, then a quarter, then an eighth, until a cup has given back about a second.</li>
+      <li>Keep the stream on a cup that is already full and it <strong>pays every fifth of a second</strong>
+        &mdash; the cup waits there while you hold it, for up to <strong>two seconds</strong> of over pouring.</li>
       <li>Every <strong>unfilled cup on screen drains the clock faster</strong> &mdash; the rate under the timer shows how much.</li>
     </ul>
     <h3>Scoring</h3>
@@ -329,8 +329,10 @@
   const GRAVITY = 1500;
   const POUR_RATE = 34;
   const COMBO_WINDOW = 4.0;
-  const OVERFILL_TIME = 0.5;   // seconds added the first time a drop lands in a full cup
-  const OVERFILL_MIN = 0.05;   // over pouring stops paying once a drop is worth less than this
+  const OVERFILL_TIME = 0.15;      // seconds added by each over pour payout
+  const OVERFILL_INTERVAL = 0.2;   // one payout per this much time held on a full cup
+  const OVERFILL_WINDOW = 2.0;     // a cup stops paying after this long of over pouring
+  const OVERFILL_GRACE = 0.25;     // over pouring ends if no drop lands for this long
   const GOLDEN_TIME_MULT = 2;  // golden cups are worth that much clock
   const MAX_SPEED_SCALE = 4;   // cups never get faster than this multiple
   const DRAIN_PER_UNFILLED = 0.05; // each unfilled cup on screen speeds the clock up by this much
@@ -388,7 +390,9 @@
       golden,
       wobble: 0,
       pop: 0,
-      overfills: 0,
+      overfillTime: 0,
+      overfillPay: 0,
+      overfillHold: 0,
       life: 0
     };
   }
@@ -552,7 +556,16 @@
       if (c.x < c.w / 2) { c.x = c.w / 2; c.dir = 1; }
       if (c.x > W - c.w / 2) { c.x = W - c.w / 2; c.dir = -1; }
       c.wobble *= Math.pow(0.02, dt);
-      if (c.pop > 0) c.pop -= dt;
+      // While drops keep landing in a full cup it hangs around instead of popping,
+      // so the over pour can run for as long as the window allows.
+      if (c.overfillHold > 0) {
+        c.overfillHold -= dt;
+        c.overfillTime += dt;
+        c.overfillPay -= dt;
+        if (c.overfillTime >= OVERFILL_WINDOW) c.overfillHold = 0;
+      } else if (c.pop > 0) {
+        c.pop -= dt;
+      }
     }
 
     const fy = floorY();
@@ -601,7 +614,7 @@
 
     for (let i = g.cups.length - 1; i >= 0; i--) {
       const c = g.cups[i];
-      if (c.fill >= c.need && c.pop <= 0) g.cups.splice(i, 1);
+      if (c.fill >= c.need && c.pop <= 0 && c.overfillHold <= 0) g.cups.splice(i, 1);
     }
 
     if (g.shake > 0) g.shake = Math.max(0, g.shake - dt * 3);
@@ -621,14 +634,15 @@
     if (c.golden) sound.bonus(); else sound.fill();
   }
 
-  // Extra drops that land after the cup is already full pay out the clock bonus.
-  // Every one of them counts, so you can keep over pouring the same cup for as
-  // long as it is on screen; each payout is half the last so a single cup can
-  // never hand back more than double OVERFILL_TIME however hard you lean on it.
+  // Drops landing in an already full cup pay the clock back on a timer rather than
+  // per drop: one payout every OVERFILL_INTERVAL for as long as you keep the stream
+  // on it, up to OVERFILL_WINDOW seconds before that cup is spent.
   function overfillCup(c) {
-    const addTime = OVERFILL_TIME * (c.golden ? GOLDEN_TIME_MULT : 1) / Math.pow(2, c.overfills);
-    if (addTime < OVERFILL_MIN) return;
-    c.overfills++;
+    if (c.overfillTime >= OVERFILL_WINDOW) return;
+    c.overfillHold = OVERFILL_GRACE;
+    if (c.overfillPay > 0) return;
+    c.overfillPay = OVERFILL_INTERVAL;
+    const addTime = OVERFILL_TIME * (c.golden ? GOLDEN_TIME_MULT : 1);
     game.time += addTime;
     popText(c.x, floorY() - c.h - 46, "+" + Math.round(addTime * 100) / 100 + "s", "#46e3ff");
     sound.bonus();
