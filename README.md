@@ -73,7 +73,7 @@ that would have made the round worth something.
 
 ## Rank and the back bar
 
-Your **best single round of the session** sets your rank, and every upgrade is gated behind
+Your **best single round** sets your rank, and every upgrade is gated behind
 one. Grind tips alone and you end up rich in front of a locked shelf; chase score alone and
 you can afford nothing on the open one.
 
@@ -108,9 +108,16 @@ considerably more for anyone who commits to one currency and stays there.
 The bottle's reach starts deliberately short so **Steady Hands** has somewhere to go: a fresh
 bar can only carry the bottle down to 42% of the screen, and the three levels take that to 66%.
 
-What you buy — and your rank — **carries into every later round of the session, but not past a
-reload**. Nothing is written to disk, so every player starts a fresh page on exactly the same
-bar and scores stay comparable.
+What you buy — and your rank, your tips and your best score — **is saved in your browser and
+survives a reload**. The climb is long enough now that losing a night's tips to a stray
+refresh was the wrong kind of hard.
+
+To start over deliberately, open the **ℹ** panel and use **Reset Everything** under *Start
+Over*. It asks twice, then wipes the save: no tips, no stock, rank 1, no best score.
+
+The save is versioned. A save written by an older version of the game is discarded rather
+than guessed at, which is how the scoring rewrite cleared every pre-rewrite high score once —
+those were earned under rules that no longer exist.
 
 ## Sharing a score
 
@@ -125,8 +132,9 @@ the message itself — your messaging app does.
 ## Privacy
 
 The game collects nothing and sends nothing anywhere: no accounts, no analytics, no trackers,
-no ads, no server that sees you play. Your best score is written to `localStorage` in your own
-browser and never leaves the device. The Share button only hands text to your own device's
+no ads, no server that sees you play. Your bar — tips, upgrades, rank and best score — is
+written to `localStorage` in your own browser and never leaves the device. Clearing your
+browser data erases it, and so does *Reset Everything* in the ℹ panel. The Share button only hands text to your own device's
 share sheet or clipboard when you press it — nothing is transmitted by the game. The only network request is the page re-fetching itself
 once a minute to notice a new deploy, and it carries no information about you.
 
@@ -150,8 +158,9 @@ once a minute to notice a new deploy, and it carries no information about you.
   slide faster the longer you survive *and* the more cups you fill — so a hot streak buys
   time while it also outruns you. That's what ends the game, not a bonus cap.
 
-Your best score is stored locally in the browser. Tips, rank and upgrades are not stored at
-all — they live only in the page, for as long as it is open.
+Your best score, tips, rank and upgrades are all stored locally in the browser under a single
+versioned `makeItPourSave` key, written after every round and every purchase. Nothing is sent
+anywhere, and *Reset Everything* in the ℹ panel deletes the key.
 
 ## Tech
 

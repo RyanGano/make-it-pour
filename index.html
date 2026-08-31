@@ -144,6 +144,17 @@
   .panel ul { display: flex; flex-direction: column; gap: 8px; padding-left: 20px; }
   .panel strong { color: var(--ink); }
   .panel .privacy { border-top: 1px solid rgba(255,255,255,.1); padding-top: 14px; }
+  .panel .danger { border-top: 1px solid rgba(255,255,255,.1); padding-top: 14px; }
+  button.danger-btn {
+    color: #ffb1b1;
+    background: rgba(255,90,90,.12);
+    box-shadow: none;
+    border: 1px solid rgba(255,90,90,.45);
+    padding: 12px 26px;
+    font-size: 15px;
+  }
+  button.danger-btn:active { box-shadow: none; }
+  #resetNote { min-height: 1.2em; font-size: 13px; color: var(--muted); }
   .panel button { align-self: center; margin-top: 4px; }
   #shopScreen {
     justify-content: flex-start;
@@ -314,17 +325,26 @@
       <li><strong>Your best round's score is your rank</strong>, and rank decides what the bar
         will sell you at all. Grind tips alone and you end up rich in front of a locked shelf;
         chase score alone and you can afford nothing.</li>
-      <li>What you buy <strong>carries into every later round</strong>, but only for this
-        session: reloading the page starts everyone over on the same bar.</li>
+      <li>What you buy <strong>carries into every later round</strong>, and the bar is
+        <strong>saved in this browser</strong> &mdash; your tips, your stock, your rank and
+        your best score are all still there when you come back.</li>
     </ul>
+    <div class="danger">
+      <h3>Start Over</h3>
+      <p>Wipes the bar back to opening night: no tips, no stock, rank 1, no best score. There
+        is no undo.</p>
+      <button id="resetBtn" class="danger-btn">Reset Everything</button>
+      <p id="resetNote" role="status"></p>
+    </div>
     <div class="privacy">
       <h3>Your Privacy</h3>
       <p>This game <strong>collects nothing and sends nothing anywhere</strong>. There are no
         accounts, no analytics, no trackers, no ads, and no server that ever sees you play.
-        Your <strong>best score is saved only in this browser</strong>, on this device, and
-        never leaves it &mdash; clearing your browser data erases it for good. The page's one
-        network request is re-fetching itself to notice when a new version has been deployed;
-        it carries no information about you.</p>
+        Your <strong>bar &mdash; tips, upgrades, rank and best score &mdash; is saved only
+        in this browser</strong>, on this device, and never leaves it. Clearing your browser
+        data erases it for good, and <em>Reset Everything</em> above does the same on
+        purpose. The page's one network request is re-fetching itself to notice when a new
+        version has been deployed; it carries no information about you.</p>
     </div>
     <button id="infoCloseBtn">Got It</button>
   </div>
@@ -341,7 +361,7 @@
     <p style="text-align:center"><strong>Over pouring</strong> pays the tips that buy all of
       this, and costs you a point of combo every time. <strong>Filling</strong> pays the score
       that earns your rank, and rank is what the bar will sell you. What you buy stays with you
-      for every round &mdash; until you reload the page.</p>
+      for every round, and this browser remembers it between visits.</p>
     <div class="up-list" id="upList"></div>
     <button id="shopCloseBtn">Back to the Bar</button>
   </div>
@@ -365,6 +385,8 @@
   const shopScreen = document.getElementById("shopScreen");
   const shopBtn = document.getElementById("shopBtn");
   const upList = document.getElementById("upList");
+  const resetBtn = document.getElementById("resetBtn");
+  const resetNote = document.getElementById("resetNote");
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -432,6 +454,7 @@
   // ------------------------------------------------------------- state
   const ROUND_TIME = 60;
   const GRAVITY = 1500;
+  const SPOUT_DX = 26;         // how far the spout sits from the bottle's centre
   const POUR_RATE = 34;
   const COMBO_WINDOW = 4.0;
   const OVERFILL_TIME = 0.15;      // seconds added by each over pour payout
@@ -462,9 +485,10 @@
   // your best round's score is the rank that decides what the shop will sell you. Grind
   // either one alone and you end up short of the other, which is the point.
   //
-  // All of it lives in memory only: a reload puts every player back on the same starting
-  // bar, which keeps scores comparable and keeps the game's "stores nothing about you"
-  // promise intact.
+  // Tips, stock and rank are all saved to this browser, so the bar you built is still
+  // standing after a refresh. It is a long climb now, and starting it over on every
+  // reload was the wrong kind of hard. Nothing is sent anywhere, and the info panel has
+  // a reset for anyone who wants the opening-night bar back.
   const RANKS = [
     { at: 0,      name: "Barback" },
     { at: 6000,   name: "Pourer" },
@@ -542,7 +566,74 @@
   let game = null;
   let last = 0;
   let best = 0;
-  try { best = parseInt(localStorage.getItem("makeItPourBest") || "0", 10) || 0; } catch (e) { best = 0; }
+
+  // ------------------------------------------------------------- the saved bar
+  // A round is long enough now that losing a night's tips to a stray refresh is a real
+  // loss, so the bar is written to this browser after anything that changes it. Nothing
+  // leaves the device: one key, this origin, no server involved.
+  //
+  // SAVE_VERSION is the escape hatch. A save from an older version is thrown away rather
+  // than guessed at, which is how the scoring rewrite clears every high score exactly
+  // once - old bests were earned under rules that no longer exist and cannot be compared
+  // to a score from this one.
+  const SAVE_KEY = "makeItPourSave";
+  const SAVE_VERSION = 2;
+  const LEGACY_BEST_KEY = "makeItPourBest";   // pre-rewrite bests, deliberately dropped
+
+  function intOr(v) {
+    const n = Math.floor(Number(v));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }
+
+  function loadProgress() {
+    try {
+      localStorage.removeItem(LEGACY_BEST_KEY);
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (!data || data.v !== SAVE_VERSION) return;
+      best = intOr(data.best);
+      tips = intOr(data.tips);
+      peakScore = intOr(data.peakScore);
+      // Only ids the shop still stocks, and never past the levels it sells, so an old or
+      // hand-edited save cannot hand out an upgrade that no longer exists.
+      for (const u of UPGRADES) {
+        const n = intOr(data.owned && data.owned[u.id]);
+        if (n > 0) owned[u.id] = Math.min(n, u.costs.length);
+      }
+    } catch (e) {
+      // Corrupt save, private mode, storage disabled - open a fresh bar and carry on.
+    }
+  }
+
+  function saveProgress() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        v: SAVE_VERSION, best: best, tips: tips, peakScore: peakScore, owned: owned
+      }));
+    } catch (e) {
+      // Storage full or blocked - the session still plays, it just will not survive a reload.
+    }
+  }
+
+  // Wipes the bar back to opening night: no tips, no stock, no rank, no best. The
+  // upgrade getters all read owned() live, so a reset mid-round takes hold at once.
+  function resetProgress() {
+    best = 0;
+    tips = 0;
+    peakScore = 0;
+    for (const k of Object.keys(owned)) delete owned[k];
+    if (game) game.tipsEarned = 0;   // nothing from this round survives it either
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    shopBtn.textContent = "Upgrades";
+    // The end screen may be sitting behind the info panel, still showing the old bar.
+    document.getElementById("finalBest").textContent = "0";
+    document.getElementById("finalTips").textContent = "0";
+    document.getElementById("finalRank").textContent = "1";
+    if (!shopScreen.hidden) renderShop();
+  }
+
+  loadProgress();
 
   function floorY() { return H - Math.max(70, H * 0.10); }
 
@@ -559,7 +650,7 @@
       comboTimer: comboWindow(),
       level: 1,
       shake: 0,
-      bottle: { x: W / 2, y: Math.min(150, H * 0.2), tilt: 0, hue: 0 },
+      bottle: { x: W / 2, y: Math.min(150, H * 0.2), tilt: 0, hue: 0, face: 1 },
       pouring: false,
       drops: [],
       bits: [],
@@ -572,9 +663,24 @@
     };
   }
 
+  function spoutX() {
+    const b = game.bottle;
+    return b.x + SPOUT_DX * b.face;
+  }
+
+  // Aim the spout, not the bottle: the body has to stay on screen, so near the left
+  // wall the bottle flips over and pours from its other side instead of the stream
+  // stalling 50px short of the edge.
+  function aimSpout(x) {
+    const b = game.bottle;
+    const sx = clamp(x, 4, W - 4);
+    b.face = sx - SPOUT_DX >= 30 ? 1 : -1;
+    b.x = clamp(sx - SPOUT_DX * b.face, 30, W - 30);
+  }
+
   function clampWorld() {
     if (!game) return;
-    game.bottle.x = clamp(game.bottle.x, 30, W - 30);
+    aimSpout(spoutX());
     game.bottle.y = clamp(game.bottle.y, 60, bottleFloor());
     for (const c of game.cups) c.x = clamp(c.x, c.w / 2, Math.max(c.w / 2, W - c.w / 2));
   }
@@ -632,7 +738,7 @@
 
   function aimAt(p, pressing) {
     if (!game || !game.running || game.paused) return;
-    game.bottle.x = clamp(p.x, 30, W - 30);
+    aimSpout(p.x);
     game.bottle.y = clamp(p.y - 70, 60, bottleFloor());
     if (pressing !== undefined) game.pouring = pressing;
   }
@@ -696,8 +802,8 @@
 
   function keyboardMove(dt) {
     const s = 620 * dt;
-    if (keys.has("ArrowLeft")) game.bottle.x -= s;
-    if (keys.has("ArrowRight")) game.bottle.x += s;
+    if (keys.has("ArrowLeft")) aimSpout(spoutX() - s);
+    if (keys.has("ArrowRight")) aimSpout(spoutX() + s);
     if (keys.has("ArrowUp")) game.bottle.y -= s;
     if (keys.has("ArrowDown")) game.bottle.y += s;
   }
@@ -708,9 +814,10 @@
     game.dropCarry += pourRate() * dt;
     const n = Math.floor(game.dropCarry);
     game.dropCarry -= n;
+    const sx = spoutX();
     for (let i = 0; i < n; i++) {
       game.drops.push({
-        x: b.x + 26 + rand(-4, 4),
+        x: sx + rand(-4, 4),
         y: b.y + 22 + rand(-3, 3),
         vx: rand(-18, 18),
         vy: rand(60, 130),
@@ -980,7 +1087,8 @@
     const b = game.bottle;
     ctx.save();
     ctx.translate(b.x, b.y);
-    ctx.rotate(b.tilt);
+    ctx.rotate(b.tilt * b.face);
+    ctx.scale(b.face, 1);
 
     ctx.shadowColor = "rgba(70,227,255,.55)";
     ctx.shadowBlur = 22;
@@ -1009,7 +1117,7 @@
     grd.addColorStop(0, "rgba(160,245,255,.85)");
     grd.addColorStop(1, "rgba(160,245,255,0)");
     ctx.fillStyle = grd;
-    ctx.fillRect(b.x + 21, b.y + 18, 10, 90);
+    ctx.fillRect(spoutX() - 5, b.y + 18, 10, 90);
   }
 
   function drawDrops() {
@@ -1216,11 +1324,22 @@
     if (infoScreen.hidden === false) return;
     setPaused(true);
     pauseScreen.hidden = true;
+    armReset(false);
     infoScreen.hidden = false;
+  }
+
+  // Reset asks twice. The button is a few inches from the rules a new player is reading,
+  // and one stray tap should never cost somebody the bar they spent a week building.
+  let resetArmed = false;
+  function armReset(on) {
+    resetArmed = on;
+    resetBtn.textContent = on ? "Tap again to wipe it" : "Reset Everything";
+    resetNote.textContent = on ? "This cannot be undone. Tap anything else to back out." : "";
   }
 
   function closeInfo() {
     if (infoScreen.hidden) return;
+    armReset(false);
     infoScreen.hidden = true;
     infoScreen.scrollTop = 0;
     resize();
@@ -1253,16 +1372,14 @@
     pauseBtn.hidden = true;
     sound.over();
     const isBest = game.score > best;
-    if (isBest) {
-      best = game.score;
-      try { localStorage.setItem("makeItPourBest", String(best)); } catch (e) {}
-    }
+    if (isBest) best = game.score;
     const earned = game.tipsEarned;
     tips += earned;
     game.tipsEarned = 0;
     const wasRank = rank();
     if (game.score > peakScore) peakScore = game.score;
     const rankedUp = rank() > wasRank;
+    saveProgress();   // best, tips and rank all just moved
     document.getElementById("finalRank").textContent = rank();
     document.getElementById("finalTips").textContent = tips;
     document.getElementById("finalScore").textContent = game.score;
@@ -1340,6 +1457,7 @@
           if (tips < cost || lvl(u.id) >= u.costs.length || u.rank > rank()) return;
           tips -= cost;
           owned[u.id] = n + 1;
+          saveProgress();
           sound.bonus();
           renderShop();
         });
@@ -1398,7 +1516,16 @@
 
   document.getElementById("info").addEventListener("click", (e) => { e.stopPropagation(); openInfo(); });
   document.getElementById("infoCloseBtn").addEventListener("click", closeInfo);
-  infoScreen.addEventListener("click", (e) => { if (e.target === infoScreen) closeInfo(); });
+  resetBtn.addEventListener("click", () => {
+    if (!resetArmed) { armReset(true); return; }
+    resetProgress();
+    armReset(false);
+    resetNote.textContent = "Done - the bar is back to opening night.";
+  });
+  infoScreen.addEventListener("click", (e) => {
+    if (resetArmed && e.target !== resetBtn) armReset(false);   // any other tap backs out
+    if (e.target === infoScreen) closeInfo();
+  });
 
   pauseBtn.addEventListener("click", (e) => { e.stopPropagation(); togglePause(); });
   document.getElementById("resumeBtn").addEventListener("click", () => setPaused(false));
