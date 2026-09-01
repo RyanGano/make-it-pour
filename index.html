@@ -413,8 +413,20 @@
   }
 
   // ------------------------------------------------------------- audio
+  // The sound switch is a preference, not progress, so it lives in its own key: it
+  // survives a save-version bump and a reset that wipes the bar back to opening night.
+  const SOUND_KEY = "makeItPourSound";
+
+  function loadSoundOn() {
+    try {
+      return localStorage.getItem(SOUND_KEY) !== "off";
+    } catch (e) {
+      return true;   // storage blocked - play with sound on, as if nothing was ever saved
+    }
+  }
+
   const sound = {
-    on: true,
+    on: loadSoundOn(),
     ctx: null,
     resume() {
       if (!this.ctx) {
@@ -445,11 +457,19 @@
   };
 
   const muteBtn = document.getElementById("mute");
+
+  function renderMuteBtn() {
+    muteBtn.innerHTML = sound.on ? "&#128266;" : "&#128263;";
+  }
+
   muteBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     sound.on = !sound.on;
-    muteBtn.innerHTML = sound.on ? "&#128266;" : "&#128263;";
+    renderMuteBtn();
+    try { localStorage.setItem(SOUND_KEY, sound.on ? "on" : "off"); } catch (e) {}
   });
+
+  renderMuteBtn();   // the button has to open showing whatever was saved last time
 
   // ------------------------------------------------------------- state
   const ROUND_TIME = 60;
