@@ -107,6 +107,9 @@ considerably more for anyone who commits to one currency and stays there.
 
 The bottle's reach starts deliberately short so **Steady Hands** has somewhere to go: a fresh
 bar can only carry the bottle down to 42% of the screen, and the three levels take that to 66%.
+On a very short screen, such as a phone on its side, the bottle is never carried below the
+mouths of the cups, and the three levels share out whatever room there is; the shop quotes what
+each one adds on your screen.
 
 What you buy — and your rank, your tips and your best score — **is saved in your browser and
 survives a reload**. The climb is long enough now that losing a night's tips to a stray
@@ -134,17 +137,18 @@ the message itself — your messaging app does.
 The game collects nothing and sends nothing anywhere: no accounts, no analytics, no trackers,
 no ads, no server that sees you play. Your bar — tips, upgrades, rank and best score — is
 written to `localStorage` in your own browser and never leaves the device. Clearing your
-browser data erases it, and so does *Reset Everything* in the ℹ panel. The Share button only hands text to your own device's
-share sheet or clipboard when you press it — nothing is transmitted by the game. The only network request is the page re-fetching itself
-once a minute to notice a new deploy, and it carries no information about you.
+browser data erases it, and so does *Reset Everything* in the ℹ panel. The Share button only
+hands text to your own device's share sheet or clipboard when you press it — nothing is
+transmitted by the game. The only network request is the page re-fetching itself once a
+minute to notice a new deploy, and it carries no information about you.
 
 ## How to score
 
 - Every drop that lands in a cup fills it; a cup that hits 100% pays out and is replaced.
 - Filling a cup raises your **combo** (up to x9) and multiplies the payout. Go too long
   without a fill and the combo ticks back down.
-- **Golden cups** are worth 3x, add double the time, and are the only cup that tips you for
-  simply finishing it.
+- **Golden cups** are worth 3x, pay double clock and double tips when over poured, and are the
+  only cup that tips you for simply finishing it.
 - Filling a cup only ever scores. The clock — and every tip you will ever spend — comes back
   from **over pouring**: keep the stream on a cup after it is full and it pays every third of
   a second, for up to two seconds, before the cup is spent. See
@@ -165,8 +169,11 @@ anywhere, and *Reset Everything* in the ℹ panel deletes the key.
 ## Tech
 
 Vanilla HTML/CSS/JS on a single `<canvas>` — no dependencies, no bundler. The only network
-traffic is a once-a-minute check of `index.html` itself: if its `ETag`/`Last-Modified` (or, on
-hosts that send neither, its contents) changes, a small "There's an update — refresh" notice
-appears in the bottom right. That check is skipped when the page is opened over `file:`.
-Pointer Events unify mouse and multi-touch input, and the canvas is device-pixel-ratio aware,
-so it stays crisp on high-DPI phones.
+traffic is a once-a-minute check of `index.html` itself: if its contents change (a matching
+`ETag`, or `Last-Modified` from hosts that send no `ETag`, counts as unchanged, since some
+hosts inject per-request bytes into the page), a small "There's an update — refresh" notice
+appears in the bottom right. A check that fails, takes longer than 10 seconds, or gets back
+something other than the game (a host's maintenance page, say) is ignored and retried on the
+next tick. The check is skipped when the page is opened over `file:`. Pointer Events unify
+mouse and multi-touch input, and the canvas is device-pixel-ratio aware, so it stays crisp on
+high-DPI phones.

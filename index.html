@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#070b18" />
-<meta name="description" content="Make it Pour - a fast, touch-friendly pouring game." />
+<meta name="description" content="Make it Pour — a fast, touch-friendly pouring game." />
 <title>Make it Pour</title>
 <style>
   :root {
@@ -51,6 +51,7 @@
     z-index: 10;
   }
   .overlay[hidden] { display: none; }
+  .overlay:focus { outline: none; }   /* focused only to take keys off what it covers */
   h1 {
     font-size: clamp(38px, 12vw, 86px);
     line-height: .95;
@@ -91,10 +92,10 @@
     border: 1px solid rgba(70,227,255,.35);
   }
   button.secondary:active { box-shadow: none; }
-  #shareNote { min-height: 1.2em; font-size: 13px; color: var(--accent); }
-  #shareNote:empty { visibility: hidden; }
+  #endStatus { min-height: 1.2em; font-size: 13px; color: var(--accent); }
+  #endStatus:empty { visibility: hidden; }
   .hint { font-size: 13px; color: var(--muted); }
-  .hint kbd { background: rgba(255,255,255,.1); border-radius: 5px; padding: 2px 7px; font-family: inherit; }
+  kbd { background: rgba(255,255,255,.1); border-radius: 5px; padding: 2px 7px; font-family: inherit; }
   #controls {
     position: fixed;
     top: max(12px, env(safe-area-inset-top));
@@ -118,7 +119,7 @@
     justify-content: flex-start;
     overflow-y: auto;
     overscroll-behavior: contain;
-    z-index: 15;
+    z-index: 17;   /* above the shop: the (i) button stays clickable while it is open */
   }
   .panel {
     width: min(560px, 100%);
@@ -231,12 +232,19 @@
     box-shadow: 0 8px 24px rgba(0,0,0,.4);
   }
   #updateNotice[hidden] { display: none; }
-  #updateNotice a {
-    color: var(--accent);
+  #updateNotice button {
+    padding: 0;
+    font-size: inherit;
     font-weight: 800;
-    cursor: pointer;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--accent);
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
     text-decoration: underline;
   }
+  #updateNotice button:active { transform: none; }
 </style>
 </head>
 <body>
@@ -244,7 +252,7 @@
 <div id="controls">
   <button id="pause" title="Pause" aria-label="Pause game" hidden>&#10074;&#10074;</button>
   <button id="info" title="How to play" aria-label="How to play">&#8505;</button>
-  <button id="mute" title="Toggle sound" aria-label="Toggle sound">&#128266;</button>
+  <button id="mute" title="Mute" aria-label="Mute sound">&#128266;</button>
 </div>
 
 <div class="overlay" id="startScreen">
@@ -277,10 +285,10 @@
     <button id="shopBtn" class="secondary">Upgrades</button>
     <button id="shareBtn" class="secondary">Share</button>
   </div>
-  <p id="shareNote" role="status"></p>
+  <p id="endStatus" role="status"></p>
 </div>
 
-<div class="overlay" id="infoScreen" hidden>
+<div class="overlay" id="infoScreen" tabindex="-1" hidden>
   <div class="panel">
     <h2>How to Play</h2>
     <p>Cups slide along the floor. Move the bottle over one, pour, and keep the stream on
@@ -293,8 +301,8 @@
     </ul>
     <h3>Filling pays points</h3>
     <ul>
-      <li>Each filled cup is <strong>100 points</strong>, and a <strong>golden cup is 300</strong>.</li>
-      <li>Fills in quick succession build a <strong>combo multiplier</strong> up to x9, and the
+      <li>Each filled cup is <strong><span data-rule="cupScore">100</span> points</strong>, and a <strong>golden cup is <span data-rule="goldenScore">300</span></strong>.</li>
+      <li>Fills in quick succession build a <strong>combo multiplier</strong> up to x<span data-rule="comboCap">9</span>, and the
         combo is what makes a score big.</li>
       <li>Cups slide faster as the round goes on and as you fill more &mdash; a hot streak buys
         time and outruns you at once.</li>
@@ -305,15 +313,15 @@
         third of a second. The first <strong>half second is free</strong> &mdash; drops still in
         the air are not your fault &mdash; and it only pays the clock.</li>
       <li>Stay past that and every payout hands you <strong>tips</strong> &mdash; climbing one
-        at a time, up to <strong>2</strong> a payout until <em>Bigger Tips</em> raises the cap
+        at a time, up to <strong data-rule="tipTiers">2</strong> a payout until <em>Bigger Tips</em> raises the cap
         &mdash; and <strong>knocks a point off your combo</strong> each time.</li>
       <li>So every full cup is a choice: <strong>move on for the score, or lean on it for the
         money</strong>. You cannot have both from the same cup.</li>
-      <li>The exception: a <strong>golden cup tips you 8 just for finishing it</strong>.</li>
+      <li>The exception: a <strong>golden cup tips you <span data-rule="goldFillTips">8</span> just for finishing it</strong>.</li>
     </ul>
     <h3>The Clock</h3>
     <ul>
-      <li>A round starts at <strong>60 seconds</strong>. Over pouring is the only thing that
+      <li>A round starts at <strong><span data-rule="roundTime">60</span> seconds</strong>. Over pouring is the only thing that
         gives time back, so you cannot ignore it completely.</li>
       <li>Every <strong>unfilled cup on screen drains the clock faster</strong> &mdash; the rate
         under the timer shows how much.</li>
@@ -350,7 +358,7 @@
   </div>
 </div>
 
-<div class="overlay" id="shopScreen" hidden>
+<div class="overlay" id="shopScreen" tabindex="-1" hidden>
   <div class="panel">
     <h2>The Back Bar</h2>
     <div class="tips-bar"><b id="tipsCount">0</b><span>tips to spend</span></div>
@@ -368,7 +376,7 @@
 </div>
 
 <div id="updateNotice" role="status" hidden>
-  <span>There's an update</span><a href="#" id="updateRefresh">refresh</a>
+  <span>There's an update</span><button type="button" id="updateRefresh">refresh</button>
 </div>
 
 <script>
@@ -390,6 +398,19 @@
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const rand = (a, b) => a + Math.random() * (b - a);
+  // Every number the player reads - score, tips, prices, ranks, seconds, rates - goes
+  // through here, so a 20,000 in the shop is never a 20000 on the end screen, and a player
+  // whose locale writes 1,5 or ۳ sees that everywhere, not in some places and not others.
+  // The HUD formats several numbers every frame, and toLocaleString with options builds a
+  // fresh formatter on each call, so keep one per number of decimal places.
+  const numberFormats = [];
+  function num(n, digits = 0) {
+    if (!numberFormats[digits]) {
+      numberFormats[digits] = new Intl.NumberFormat(undefined,
+        { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    }
+    return numberFormats[digits].format(n);
+  }
 
   let W = 0, H = 0;
 
@@ -410,6 +431,7 @@
     canvas.height = Math.floor(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     clampWorld();
+    if (!shopScreen.hidden) renderShop();   // Steady Hands' quote depends on the screen height
   }
 
   // ------------------------------------------------------------- audio
@@ -428,38 +450,59 @@
   const sound = {
     on: loadSoundOn(),
     ctx: null,
+    // Sound is a nice-to-have. This runs first thing in start() and on every tap and key,
+    // so a browser that refuses an AudioContext must cost the player the sound, never the game.
     resume() {
-      if (!this.ctx) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (AC) this.ctx = new AC();
+      try {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) this.ctx = new AC();
+        }
+        if (this.ctx && this.ctx.state === "suspended") {
+          const p = this.ctx.resume();
+          if (p && p.catch) p.catch(() => {});
+        }
+      } catch (e) {
+        // No audio this time; the next gesture tries again.
       }
-      if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
     },
+    // Called from inside update(), so a throw here would stop the frame loop and freeze
+    // the round for good. Older prefixed engines return nothing from connect(), which is
+    // why the nodes are wired one call at a time rather than chained.
     blip(freq, dur, type, gain) {
       if (!this.on || !this.ctx) return;
-      const t = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = type || "sine";
-      osc.frequency.setValueAtTime(freq, t);
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.6, t + dur);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(gain || 0.12, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      osc.connect(g).connect(this.ctx.destination);
-      osc.start(t);
-      osc.stop(t + dur + 0.02);
+      try {
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = type || "sine";
+        osc.frequency.setValueAtTime(freq, t);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.6, t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain || 0.12, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + dur + 0.02);
+      } catch (e) {
+        // A missed sound effect is not worth a frozen round.
+      }
     },
     drip() { if (Math.random() < 0.25) this.blip(420 + Math.random() * 260, 0.05, "sine", 0.03); },
     fill() { this.blip(520, 0.18, "triangle", 0.16); },
     bonus() { this.blip(880, 0.28, "square", 0.1); },
-    over() { this.blip(180, 0.5, "sawtooth", 0.1); }
+    gameOver() { this.blip(180, 0.5, "sawtooth", 0.1); }
   };
 
   const muteBtn = document.getElementById("mute");
 
+  // Like the pause button, the label names what a tap will do, so a screen reader (or a
+  // hover) can tell whether sound is on without the icon.
   function renderMuteBtn() {
     muteBtn.innerHTML = sound.on ? "&#128266;" : "&#128263;";
+    muteBtn.title = sound.on ? "Mute" : "Unmute";
+    muteBtn.setAttribute("aria-label", sound.on ? "Mute sound" : "Unmute sound");
   }
 
   muteBtn.addEventListener("click", (e) => {
@@ -473,23 +516,34 @@
 
   // ------------------------------------------------------------- state
   const ROUND_TIME = 60;
+  const CUP_SCORE = 100;           // points for filling a cup, before the combo and Top Shelf
+  const GOLDEN_SCORE_MULT = 3;     // a golden cup scores this many cups' worth ("triple" in the copy)
+  const COMBO_CAP = 9;             // the combo tops out here until Hot Streak raises it
   const GRAVITY = 1500;
   const SPOUT_DX = 26;         // how far the spout sits from the bottle's centre
   const POUR_RATE = 34;
   const COMBO_WINDOW = 4.0;
   const OVERFILL_TIME = 0.15;      // seconds added by each over pour payout
-  const OVERFILL_INTERVAL = 0.3;   // one payout per this much time held on a full cup
+  const OVERFILL_INTERVAL = 0.3;   // one payout per this much time held on a full cup ("every third of a second" in the copy)
   const TIP_TIERS = 2;             // a payout's tips climb by one each time, up to this
   const GOLD_FILL_TIPS = 8;        // a golden cup tips you for finishing it, over pour or not
   const OVERFILL_WINDOW = 2.0;     // a cup stops paying after this long of over pouring
   const OVERFILL_GRACE = 0.25;     // over pouring ends if no drop lands for this long
-  const OVERFILL_FREE = 0.45;      // over pouring this long is on the house: clock, no tips, no combo
+  const OVERFILL_FREE = 0.45;      // over pouring this long is on the house: clock, no tips, no combo ("half second" in the copy)
   const GOLDEN_TIME_MULT = 2;  // golden cups are worth that much clock
+  const GOLDEN_TIP_MULT = 2;   // ...and that many times the tips ("double" in the copy)
   const MAX_SPEED_SCALE = 4;   // cups never get faster than this multiple
   const DRAIN_PER_UNFILLED = 0.05; // each unfilled cup on screen speeds the clock up by this much
   const CUP_COLORS = ["#46e3ff", "#7dff9b", "#ff8fd0", "#ffb457", "#b78bff"];
+  const BOTTLE_TOP = 60;           // the highest the bottle can be carried
   const BOTTLE_REACH = 0.42;       // how far down the screen the bottle starts out able to go
   const REACH_PER_LEVEL = 0.08;    // each Steady Hands level buys this much more of the screen
+  const SPOUT_DY = 22;             // drops leave this far below the bottle's centre...
+  const SPOUT_JITTER = 3;          // ...give or take this much
+  const CUP_MIN_W = 56;            // cups are this wide...
+  const CUP_MAX_W = 84;            // ...up to this
+  const CUP_HEIGHT = 1.15;         // and this many times as tall as they are wide
+  const CATCH_BAND = 30;           // a drop lands once it crosses into this much of a cup's top
   const BUBBLE_SPAWN = [0, 9, 6, 4];   // seconds between bubbles, by Bubble Trouble level
   const BUBBLE_TIME = 1.5;         // seconds a popped bubble pays
   const BUBBLE_SCORE = 60;         // points a popped bubble pays, before the combo
@@ -520,36 +574,38 @@
   const UPGRADES = [
     { id: "reach",   name: "Steady Hands",   rank: 1, costs: [110, 320, 780],
       desc: "Carry the bottle lower, so the stream has less air to cross.",
-      effect: (n) => "+" + Math.round(n * REACH_PER_LEVEL * 100) + "% reach" },
+      effect: (n) => "+" + num(reachGain(n) * 100) + "% reach" },
     { id: "clock",   name: "Deep Pockets",   rank: 1, costs: [100, 290, 700],
       desc: "Start the round with a longer clock.",
-      effect: (n) => "+" + (n * 5) + "s to start" },
+      effect: (n) => "+" + num(n * 5) + "s to start" },
     { id: "tipsize", name: "Bigger Tips",    rank: 1, costs: [190, 520, 1200],
       desc: "Payouts climb higher, and the cup waits long enough for you to get there. Worth nothing unless you stay on it.",
-      effect: (n) => "tips climb to " + (TIP_TIERS + n) + " a payout" },
+      effect: (n) => "tips climb to " + num(TIP_TIERS + n) + " a payout" },
     { id: "pour",    name: "Wider Stream",   rank: 2, costs: [160, 450, 1050],
       desc: "More liquid per second out of the bottle.",
-      effect: (n) => "+" + (n * 7) + " drops/s" },
+      effect: (n) => "+" + num(n * 7) + " drops/s" },
     { id: "sip",     name: "Long Sip",       rank: 2, costs: [220, 650],
       desc: "A full cup pays the clock more, and keeps paying for longer, while you hold on it.",
-      effect: (n) => "+" + (n * 0.6).toFixed(1) + "s of over pour, +" + (n * 25) + "% clock" },
+      effect: (n) => "+" + num(n * 0.6, 1) + "s of over pour, +" + num(n * 25) + "% clock" },
     { id: "mult",    name: "Top Shelf",      rank: 3, costs: [150, 380, 880, 1900],
       desc: "Every cup you finish is worth more points.",
-      effect: (n) => "+" + (n * 20) + "% score" },
+      effect: (n) => "+" + num(n * 20) + "% score" },
     { id: "gold",    name: "Gold Rush",      rank: 3, costs: [150, 410, 980],
-      desc: "More cups come up golden. They score triple, tip " + GOLD_FILL_TIPS +
+      desc: "More cups come up golden. They score triple, tip " + num(GOLD_FILL_TIPS) +
             " for the fill alone, and pay double on an over pour.",
-      effect: (n) => "+" + (n * 5) + "% golden" },
+      effect: (n) => "+" + num(n * 5) + "% golden" },
     { id: "combo",   name: "Hot Streak",     rank: 4, costs: [150, 400, 900],
       desc: "The combo climbs higher and takes longer to cool off.",
-      effect: (n) => "x" + (9 + n) + " max, +" + (n * 0.7).toFixed(1) + "s" },
+      effect: (n) => "x" + num(COMBO_CAP + n) + " max, +" + num(n * 0.7, 1) + "s" },
     { id: "bubbles", name: "Bubble Trouble", rank: 5, costs: [250, 650, 1450],
       desc: "Bubbles drift across the bar. Pour through one to pop it for time and points.",
-      effect: (n) => "one every " + BUBBLE_SPAWN[n] + "s" }
+      effect: (n) => "one every " + num(BUBBLE_SPAWN[n]) + "s" }
   ];
 
+  const REACH_LEVELS = UPGRADES.find((u) => u.id === "reach").costs.length;
+
   let tips = 0;
-  let peakScore = 0;          // the best single round this session - it sets the rank
+  let best = 0;               // the best single round ever played here - it sets the rank
   const owned = Object.create(null);
   const lvl = (id) => owned[id] || 0;
 
@@ -560,7 +616,7 @@
     for (let i = 0; i < RANKS.length; i++) if (score >= RANKS[i].at) r = i + 1;
     return r;
   }
-  const rank = () => rankOf(peakScore);
+  const rank = () => rankOf(best);
   const rankName = () => RANKS[rank() - 1].name;
   const nextRank = () => RANKS[rank()];   // undefined once you are at the top
 
@@ -575,17 +631,41 @@
   const tipCap = () => TIP_TIERS + lvl("tipsize");
   const pourRate = () => POUR_RATE + lvl("pour") * 7;
   const goldChance = () => 0.12 + game.level * 0.01 + lvl("gold") * 0.05;
-  const maxCombo = () => 9 + lvl("combo");
+  const maxCombo = () => COMBO_CAP + lvl("combo");
   const comboWindow = () => COMBO_WINDOW + lvl("combo") * 0.7;
   const overfillWindow = () =>
     OVERFILL_WINDOW + lvl("sip") * 0.6 + lvl("tipsize") * OVERFILL_INTERVAL;
   const overfillPay = () => OVERFILL_TIME * (1 + lvl("sip") * 0.25);
-  const bottleFloor = () => H * (BOTTLE_REACH + lvl("reach") * REACH_PER_LEVEL);
+  // The deepest the bottle can go with every drop still starting above the catch band of
+  // the tallest cup. Any lower and the stream starts under the rims and falls through.
+  function lowestPour() {
+    const clearance = CUP_MAX_W * CUP_HEIGHT - CATCH_BAND + SPOUT_DY + SPOUT_JITTER;
+    return Math.max(BOTTLE_TOP, floorY() - clearance);
+  }
+
+  // Steady Hands levels step evenly from the starting reach to the full reach. On a tall
+  // screen that is REACH_PER_LEVEL of the height a level, exactly as priced. When the full
+  // reach would pass lowestPour() - a phone on its side - the whole range is scaled down to
+  // fit between BOTTLE_TOP and lowestPour(), keeping its proportions, so every level still
+  // adds an equal part of the room there is and none is sold for nothing.
+  function bottleFloorAt(level) {
+    const lowest = lowestPour();
+    let start = H * BOTTLE_REACH;
+    let full = H * (BOTTLE_REACH + REACH_LEVELS * REACH_PER_LEVEL);
+    if (full > lowest) {
+      const fit = (lowest - BOTTLE_TOP) / (full - BOTTLE_TOP);
+      start = BOTTLE_TOP + (start - BOTTLE_TOP) * fit;
+      full = lowest;
+    }
+    return Math.max(BOTTLE_TOP, start + (full - start) * level / REACH_LEVELS);
+  }
+  const bottleFloor = () => bottleFloorAt(lvl("reach"));
+  // What the shop quotes: the share of this screen a level adds, not a nominal figure.
+  const reachGain = (level) => (bottleFloorAt(level) - bottleFloorAt(0)) / (H || 1);
   const bubbleEvery = () => BUBBLE_SPAWN[lvl("bubbles")] || 0;
 
   let game = null;
   let last = 0;
-  let best = 0;
 
   // ------------------------------------------------------------- the saved bar
   // A round is long enough now that losing a night's tips to a stray refresh is a real
@@ -600,7 +680,9 @@
   const SAVE_VERSION = 2;
   const LEGACY_BEST_KEY = "makeItPourBest";   // pre-rewrite bests, deliberately dropped
 
-  function intOr(v) {
+  // A count read back from storage: a whole number, and anything else - missing, negative,
+  // a string someone typed into devtools - is zero.
+  function wholeNumber(v) {
     const n = Math.floor(Number(v));
     return Number.isFinite(n) && n > 0 ? n : 0;
   }
@@ -612,13 +694,15 @@
       if (!raw) return;
       const data = JSON.parse(raw);
       if (!data || data.v !== SAVE_VERSION) return;
-      best = intOr(data.best);
-      tips = intOr(data.tips);
-      peakScore = intOr(data.peakScore);
+      // Older builds kept a separate peakScore beside best, always updated together, so
+      // take whichever is higher rather than lose a rank. It is still written (below) so a
+      // tab running an older build does not read this save as rank 1.
+      best = Math.max(wholeNumber(data.best), wholeNumber(data.peakScore));
+      tips = wholeNumber(data.tips);
       // Only ids the shop still stocks, and never past the levels it sells, so an old or
       // hand-edited save cannot hand out an upgrade that no longer exists.
       for (const u of UPGRADES) {
-        const n = intOr(data.owned && data.owned[u.id]);
+        const n = wholeNumber(data.owned && data.owned[u.id]);
         if (n > 0) owned[u.id] = Math.min(n, u.costs.length);
       }
     } catch (e) {
@@ -629,7 +713,8 @@
   function saveProgress() {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: SAVE_VERSION, best: best, tips: tips, peakScore: peakScore, owned: owned
+        v: SAVE_VERSION, best: best, tips: tips, owned: owned,
+        peakScore: best   // older builds rank by this field; drop it once they are long gone
       }));
     } catch (e) {
       // Storage full or blocked - the session still plays, it just will not survive a reload.
@@ -641,19 +726,43 @@
   function resetProgress() {
     best = 0;
     tips = 0;
-    peakScore = 0;
     for (const k of Object.keys(owned)) delete owned[k];
     if (game) game.tipsEarned = 0;   // nothing from this round survives it either
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
-    shopBtn.textContent = "Upgrades";
-    // The end screen may be sitting behind the info panel, still showing the old bar.
-    document.getElementById("finalBest").textContent = "0";
-    document.getElementById("finalTips").textContent = "0";
-    document.getElementById("finalRank").textContent = "1";
+    // The end screen may be sitting behind the info panel, still describing the old bar:
+    // its stats, and the round's news - 'New Best!', a rank-up, the tips just pocketed.
+    renderBank();
+    document.getElementById("endTitle").textContent = "Time is Up!";
+    document.getElementById("endStatus").textContent = "";
     if (!shopScreen.hidden) renderShop();
   }
 
+  // The end screen's stats and its Upgrades button both show the saved bar. Everything
+  // that moves it - a round ending, a purchase, a reset - refreshes them together, so the
+  // Tips stat can never disagree with the count on the button next to it.
+  function renderBank() {
+    document.getElementById("finalBest").textContent = num(best);
+    document.getElementById("finalTips").textContent = num(tips);
+    document.getElementById("finalRank").textContent = num(rank());
+    shopBtn.textContent = tips > 0 ? "Upgrades · " + num(tips) : "Upgrades";
+  }
+
   loadProgress();
+
+  // The figures the info panel quotes are filled from the constants below, so tuning one
+  // updates the rules, and they read in the player's locale like every other number.
+  // Words are not covered: "triple", "double", "every third of a second" and "half
+  // second" in the panel and the shop still need editing by hand alongside their
+  // constants, which point back to them.
+  const RULES = {
+    cupScore: CUP_SCORE,
+    goldenScore: CUP_SCORE * GOLDEN_SCORE_MULT,
+    comboCap: COMBO_CAP,
+    tipTiers: TIP_TIERS,
+    goldFillTips: GOLD_FILL_TIPS,
+    roundTime: ROUND_TIME
+  };
+  for (const el of document.querySelectorAll("[data-rule]")) el.textContent = num(RULES[el.dataset.rule]);
 
   function floorY() { return H - Math.max(70, H * 0.10); }
 
@@ -701,18 +810,18 @@
   function clampWorld() {
     if (!game) return;
     aimSpout(spoutX());
-    game.bottle.y = clamp(game.bottle.y, 60, bottleFloor());
+    game.bottle.y = clamp(game.bottle.y, BOTTLE_TOP, bottleFloor());
     for (const c of game.cups) c.x = clamp(c.x, c.w / 2, Math.max(c.w / 2, W - c.w / 2));
   }
 
   // ------------------------------------------------------------- cups
   function makeCup() {
     const golden = Math.random() < goldChance();
-    const w = Math.min(rand(56, 84), W * 0.28);
+    const w = Math.min(rand(CUP_MIN_W, CUP_MAX_W), W * 0.28);
     return {
       x: rand(w, Math.max(w + 1, W - w)),
       w,
-      h: w * 1.15,
+      h: w * CUP_HEIGHT,
       fill: 0,
       need: Math.round(rand(14, 24) + game.level * 2),
       speed: rand(40, 80),
@@ -721,10 +830,10 @@
       golden,
       wobble: 0,
       pop: 0,
-      overfillTime: 0,
-      overfillPay: 0,
-      overfillPayouts: 0,
-      overfillHold: 0,
+      overfillElapsed: 0,     // seconds spent over pouring this cup
+      overfillCooldown: 0,    // seconds until it can pay again
+      overfillPayouts: 0,     // tipped payouts so far; each one tips a little more
+      overfillHold: 0,        // grace left before the over pour is over
       life: 0
     };
   }
@@ -759,7 +868,7 @@
   function aimAt(p, pressing) {
     if (!game || !game.running || game.paused) return;
     aimSpout(p.x);
-    game.bottle.y = clamp(p.y - 70, 60, bottleFloor());
+    game.bottle.y = clamp(p.y - 70, BOTTLE_TOP, bottleFloor());
     if (pressing !== undefined) game.pouring = pressing;
   }
 
@@ -786,23 +895,101 @@
   canvas.addEventListener("pointercancel", releasePointer);
 
   window.addEventListener("keydown", (e) => {
-    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].indexOf(e.code) >= 0) e.preventDefault();
+    // A focused, visible button is one the player chose with the keyboard: the mouse never
+    // focuses one, screens under an overlay are inert, and a round's end clears what was
+    // focused during it (all below). Outside live play that button gets Enter and Space to
+    // itself, or one press does two things: start a round and open the shop over it, or
+    // buy an upgrade and close the shop at once.
+    const playing = game && game.running && !game.paused;
+    const isEnter = e.key === "Enter";   // e.key, so the numpad's Enter is the same key
+    const onButton = (isEnter || e.code === "Space") && isLiveButton(e.target);
+    if (!playing && !e.repeat && onButton) return;
+    // Enter has no job during play, so there it still presses a focused control (mute,
+    // pause, the update notice). Anywhere else the game owns it - including when focus is
+    // stranded on a button that has since been hidden, which must never be pressed. A held
+    // Enter presses a button once: its repeats would otherwise confirm Reset Everything
+    // or buy every level of an upgrade from a single press.
+    const gameKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"];
+    if (gameKeys.indexOf(e.code) >= 0 || (isEnter && (e.repeat || !(playing && onButton)))) e.preventDefault();
     keys.add(e.code);
     sound.resume();
+    if (e.code === "Space" && playing) game.pouring = true;
+    // A held key repeats. Pouring and moving can ride the repeats, but everything below
+    // is a one-shot: a Space held through the end of a round would otherwise restart it
+    // before the score was on screen, and a held P would flicker the pause on and off.
+    if (e.repeat) return;
     if (!infoScreen.hidden) {
-      if (e.code === "Escape" || e.code === "KeyI" || e.code === "Enter" || e.code === "Space") closeInfo();
+      if (e.code === "Escape" || e.code === "KeyI" || isEnter || e.code === "Space") closeInfo();
       return;
     }
     if (!shopScreen.hidden) {
-      if (e.code === "Escape" || e.code === "KeyU" || e.code === "Enter") closeShop();
+      if (e.code === "Escape" || e.code === "KeyU" || isEnter) closeShop();
       return;
     }
     if (e.code === "KeyI") { openInfo(); return; }
     if (e.code === "KeyU" && !endScreen.hidden) { openShop(); return; }
-    if (e.code === "Space" && game && game.running && !game.paused) game.pouring = true;
-    if ((e.code === "Enter" || e.code === "Space") && (!startScreen.hidden || !endScreen.hidden)) start();
+    if ((isEnter || e.code === "Space") && (!startScreen.hidden || !endScreen.hidden)) start();
     if (e.code === "KeyP" || e.code === "Escape") togglePause();
   });
+  function isLiveButton(el) {
+    return el instanceof Element && !!el.closest("button") && el.getClientRects().length > 0;
+  }
+
+  // The mouse never leaves focus on a button. Chrome and Edge focus one on mousedown, and
+  // Space on the end screen would then press the mute button you last touched instead of
+  // starting a round. Focus is let go when the press ends - mouseup reaches the window
+  // even when the press was dragged off the button, and a right-click ends in a context
+  // menu instead - which is how Safari and Firefox on the Mac behave anyway. Only the
+  // button the mouse pressed lets go: Shift+F10 or the Menu key raises a context menu on
+  // a button the keyboard chose, and that focus stays. Cancelling mousedown would stop the
+  // focus at the source, but Firefox then drops the :active press style too.
+  let mousePressed = null;
+  window.addEventListener("mousedown", (e) => {
+    mousePressed = e.target instanceof Element ? e.target.closest("button") : null;
+  }, true);
+
+  function dropPointerFocus() {
+    if (mousePressed && document.activeElement === mousePressed) mousePressed.blur();
+    mousePressed = null;
+  }
+  window.addEventListener("mouseup", dropPointerFocus, true);
+  window.addEventListener("contextmenu", dropPointerFocus, true);
+
+  // Only one layer takes input at a time. The info panel sits over everything and the
+  // shop over the start, end and pause screens; whatever an open overlay covers is made
+  // inert, so Tab cannot reach buttons nobody can see and Space cannot press them.
+  function updateInert() {
+    const top = !infoScreen.hidden ? infoScreen : !shopScreen.hidden ? shopScreen : null;
+    for (const el of [startScreen, endScreen, pauseScreen, shopScreen]) el.inert = !!top && el !== top;
+  }
+
+  // Overlays own their visibility and the focus that goes with it. Opening one moves
+  // keyboard focus into it, off the buttons it now covers; closing it hands focus back to
+  // whatever held it. Whether focus was inside has to be read before hiding, because
+  // Chrome lets go of focus in a hidden element on its own schedule, and the screen
+  // underneath has to be live again before a button on it can take focus back.
+  const openers = new Map();
+
+  function showOverlay(screen) {
+    const opener = document.activeElement;
+    screen.hidden = false;
+    updateInert();
+    const keyboard = opener && opener !== document.body;
+    openers.set(screen, keyboard ? opener : null);
+    if (keyboard) screen.focus({ preventScroll: true });
+  }
+
+  function hideOverlay(screen) {
+    const hadFocus = screen.contains(document.activeElement);
+    screen.scrollTop = 0;   // while it still has a box - a hidden element ignores this
+    screen.hidden = true;
+    updateInert();
+    if (!hadFocus) return;
+    const opener = openers.get(screen);
+    if (opener && isLiveButton(opener)) opener.focus({ preventScroll: true });
+    else if (screen.contains(document.activeElement)) document.activeElement.blur();
+  }
+
   window.addEventListener("keyup", (e) => {
     keys.delete(e.code);
     if (e.code === "Space" && game && pointers.size === 0) game.pouring = false;
@@ -838,7 +1025,7 @@
     for (let i = 0; i < n; i++) {
       game.drops.push({
         x: sx + rand(-4, 4),
-        y: b.y + 22 + rand(-3, 3),
+        y: b.y + SPOUT_DY + rand(-SPOUT_JITTER, SPOUT_JITTER),
         vx: rand(-18, 18),
         vy: rand(60, 130),
         r: rand(3, 6)
@@ -899,9 +1086,9 @@
       // so the over pour can run for as long as the window allows.
       if (c.overfillHold > 0) {
         c.overfillHold -= dt;
-        c.overfillTime += dt;
-        c.overfillPay -= dt;
-        if (c.overfillTime >= overfillWindow()) c.overfillHold = 0;
+        c.overfillElapsed += dt;
+        c.overfillCooldown -= dt;
+        if (c.overfillElapsed >= overfillWindow()) c.overfillHold = 0;
       } else if (c.pop > 0) {
         c.pop -= dt;
       }
@@ -910,6 +1097,7 @@
     const fy = floorY();
     for (let i = g.drops.length - 1; i >= 0; i--) {
       const d = g.drops[i];
+      const prevX = d.x, prevY = d.y;
       d.vy += GRAVITY * dt;
       d.x += d.vx * dt;
       d.y += d.vy * dt;
@@ -917,7 +1105,7 @@
       let consumed = false;
       for (let j = g.bubbles.length - 1; j >= 0; j--) {
         const bub = g.bubbles[j];
-        if (Math.hypot(d.x - bub.x, d.y - bub.y) < bub.r) {
+        if (sweptHit(prevX, prevY, d.x, d.y, bub.x, bub.y, bub.r)) {
           popBubble(bub);
           g.bubbles.splice(j, 1);
           consumed = true;
@@ -928,7 +1116,10 @@
 
       for (const c of g.cups) {
         const rimY = fy - c.h;
-        if (d.y >= rimY && d.y <= rimY + 30 && Math.abs(d.x - c.x) < c.w / 2 - 4) {
+        // Test whether the drop crossed into the mouth this frame, not whether it happens to
+        // be sitting in it: a falling drop covers 40px or more per frame at 30fps, enough to
+        // step clean over a 30px band and splash on the floor under a cup it was aimed at.
+        if (d.y >= rimY && prevY <= rimY + CATCH_BAND && Math.abs(d.x - c.x) < c.w / 2 - 4) {
           c.wobble = 1;
           consumed = true;
           splash(d.x, rimY, c.color, 2, 60);
@@ -970,9 +1161,19 @@
     if (g.shake > 0) g.shake = Math.max(0, g.shake - dt * 3);
   }
 
+  // Did a drop that moved from (x0, y0) to (x1, y1) this frame pass within r of (cx, cy)?
+  // Testing only where it ended up lets a fast drop hop clean over a bubble at low frame
+  // rates, the same way it used to hop over a cup's rim.
+  function sweptHit(x0, y0, x1, y1, cx, cy, r) {
+    const dx = x1 - x0, dy = y1 - y0;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 ? clamp(((cx - x0) * dx + (cy - y0) * dy) / len2, 0, 1) : 0;
+    return Math.hypot(x0 + t * dx - cx, y0 + t * dy - cy) < r;
+  }
+
   function fillCup(c) {
     const g = game;
-    const gain = Math.round((c.golden ? 300 : 100) * g.combo * scoreMult());
+    const gain = Math.round(CUP_SCORE * (c.golden ? GOLDEN_SCORE_MULT : 1) * g.combo * scoreMult());
     g.score += gain;
     g.cupsFilled++;
     // The single exception to "filling pays score, over pouring pays tips": a golden cup
@@ -984,8 +1185,8 @@
     g.shake = c.golden ? 0.7 : 0.35;
     c.pop = 0.35;
     splash(c.x, floorY() - c.h, c.color, c.golden ? 40 : 22, 220);
-    popText(c.x, floorY() - c.h - 20, "+" + gain, c.color);
-    if (c.golden) popText(c.x, floorY() - c.h - 46, "+" + GOLD_FILL_TIPS + " tips", "#ffd25a");
+    popText(c.x, floorY() - c.h - 20, "+" + num(gain), c.color);
+    if (c.golden) popText(c.x, floorY() - c.h - 46, "+" + num(GOLD_FILL_TIPS) + " tips", "#ffd25a");
     if (c.golden) sound.bonus(); else sound.fill();
   }
 
@@ -998,28 +1199,28 @@
   // the multiplier that would have made this round's score big.
   function overfillCup(c) {
     const g = game;
-    if (c.overfillTime >= overfillWindow()) return;
+    if (c.overfillElapsed >= overfillWindow()) return;
     c.overfillHold = OVERFILL_GRACE;
-    if (c.overfillPay > 0) return;
-    c.overfillPay = OVERFILL_INTERVAL;
+    if (c.overfillCooldown > 0) return;
+    c.overfillCooldown = OVERFILL_INTERVAL;
 
     const top = floorY() - c.h;
     const addTime = overfillPay() * (c.golden ? GOLDEN_TIME_MULT : 1);
     g.time += addTime;
-    popText(c.x, top - 72, "+" + Math.round(addTime * 100) / 100 + "s", "#46e3ff");
+    popText(c.x, top - 72, "+" + num(addTime, 2) + "s", "#46e3ff");
     sound.bonus();
 
     // Still inside the free window - the clock paid, nothing was charged, nothing earned.
-    if (c.overfillTime < OVERFILL_FREE) return;
+    if (c.overfillElapsed < OVERFILL_FREE) return;
 
     c.overfillPayouts++;
-    const addTips = Math.min(c.overfillPayouts, tipCap()) * (c.golden ? 2 : 1);
+    const addTips = Math.min(c.overfillPayouts, tipCap()) * (c.golden ? GOLDEN_TIP_MULT : 1);
     g.tipsEarned += addTips;
-    popText(c.x, top - 46, "+" + addTips + (addTips === 1 ? " tip" : " tips"), "#ffd25a");
+    popText(c.x, top - 46, "+" + num(addTips) + (addTips === 1 ? " tip" : " tips"), "#ffd25a");
 
     if (g.combo > 1) {
       g.combo -= 1;
-      popText(c.x, top - 20, "combo -1", "#ff6b8b");
+      popText(c.x, top - 20, "combo " + num(-1), "#ff6b8b");
     }
   }
 
@@ -1065,8 +1266,8 @@
     g.score += gain;
     g.time += BUBBLE_TIME;
     splash(b.x, b.y, "#b7f5ff", 18, 170);
-    popText(b.x, b.y - 8, "+" + BUBBLE_TIME + "s", "#b7f5ff");
-    popText(b.x, b.y - 34, "+" + gain, "#b7f5ff");
+    popText(b.x, b.y - 8, "+" + num(BUBBLE_TIME, 1) + "s", "#b7f5ff");
+    popText(b.x, b.y - 34, "+" + num(gain), "#b7f5ff");
     sound.bonus();
   }
 
@@ -1201,7 +1402,7 @@
       ctx.fillStyle = "rgba(234,242,255,.75)";
       ctx.font = "700 12px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(Math.round(pct * 100) + "%", c.x, topY - 8);
+      ctx.fillText(num(Math.round(pct * 100)) + "%", c.x, topY - 8);
       ctx.restore();
     }
   }
@@ -1231,6 +1432,9 @@
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+  }
+
+  function drawPops() {
     ctx.textAlign = "center";
     ctx.font = "800 24px system-ui, sans-serif";
     for (const p of game.pops) {
@@ -1249,7 +1453,7 @@
     ctx.textAlign = "left";
     ctx.fillStyle = "#eaf2ff";
     ctx.font = "800 30px system-ui, sans-serif";
-    ctx.fillText(String(g.score), pad, top + 24);
+    ctx.fillText(num(g.score), pad, top + 24);
     ctx.font = "600 11px system-ui, sans-serif";
     ctx.fillStyle = "#8fa6cc";
     ctx.fillText("SCORE", pad, top + 40);
@@ -1257,7 +1461,7 @@
       ctx.fillStyle = "#ffd25a";
       ctx.font = "700 12px system-ui, sans-serif";
       const banked = tips + g.tipsEarned;
-      ctx.fillText(banked + (banked === 1 ? " TIP" : " TIPS"), pad, top + 58);
+      ctx.fillText(num(banked) + (banked === 1 ? " TIP" : " TIPS"), pad, top + 58);
     }
 
     const barW = Math.min(280, W * 0.4);
@@ -1273,19 +1477,19 @@
     ctx.textAlign = "center";
     ctx.fillStyle = "#8fa6cc";
     ctx.font = "600 11px system-ui, sans-serif";
-    ctx.fillText(Math.ceil(g.time) + "s", W / 2, barY + 26);
+    ctx.fillText(num(Math.ceil(g.time)) + "s", W / 2, barY + 26);
 
     const rate = drainRate();
     if (rate > 1) {
       ctx.fillStyle = rate >= 1.15 ? "#ff6b8b" : "#ffd25a";
       ctx.font = "700 11px system-ui, sans-serif";
-      ctx.fillText("-" + rate.toFixed(2) + "x", W / 2, barY + 42);
+      ctx.fillText("-" + num(rate, 2) + "x", W / 2, barY + 42);
     }
 
     if (g.combo > 1) {
       ctx.fillStyle = "#ffd25a";
       ctx.font = "800 20px system-ui, sans-serif";
-      ctx.fillText("x" + g.combo + " COMBO", W / 2, H - 18);
+      ctx.fillText("x" + num(g.combo) + " COMBO", W / 2, H - 18);
     }
   }
 
@@ -1302,6 +1506,7 @@
       drawStream();
       drawDrops();
       drawBits();
+      drawPops();
       drawBottle();
       drawHud();
     }
@@ -1310,11 +1515,13 @@
 
   // ------------------------------------------------------------- loop
   function frame(now) {
+    // Ask for the next frame first, so nothing that throws below - a sound, a formatter,
+    // a DOM update at the end of a round - can stop the loop and freeze the game on screen.
+    requestAnimationFrame(frame);
     const dt = Math.min(0.05, (now - last) / 1000 || 0);
     last = now;
     if (game && game.running && !game.paused) update(dt);
     render();
-    requestAnimationFrame(frame);
   }
 
   // ------------------------------------------------------------- flow
@@ -1326,11 +1533,18 @@
       pointers.clear();
     } else {
       last = performance.now();   // don't hand the first frame the whole pause as dt
+      // The (i) panel pauses the round and the resume button stays reachable above it.
+      // Resuming takes the panel down too, or the clock would drain unseen behind it.
+      closeInfo();
     }
     pauseScreen.hidden = !on;
-    pauseBtn.innerHTML = on ? "&#9654;" : "&#10074;&#10074;";
-    pauseBtn.title = on ? "Resume" : "Pause";
-    pauseBtn.setAttribute("aria-label", on ? "Resume game" : "Pause game");
+    renderPauseBtn(on);
+  }
+
+  function renderPauseBtn(paused) {
+    pauseBtn.innerHTML = paused ? "&#9654;" : "&#10074;&#10074;";
+    pauseBtn.title = paused ? "Resume" : "Pause";
+    pauseBtn.setAttribute("aria-label", paused ? "Resume game" : "Pause game");
   }
 
   function togglePause() {
@@ -1345,7 +1559,7 @@
     setPaused(true);
     pauseScreen.hidden = true;
     armReset(false);
-    infoScreen.hidden = false;
+    showOverlay(infoScreen);
   }
 
   // Reset asks twice. The button is a few inches from the rules a new player is reading,
@@ -1360,12 +1574,11 @@
   function closeInfo() {
     if (infoScreen.hidden) return;
     armReset(false);
-    infoScreen.hidden = true;
-    infoScreen.scrollTop = 0;
+    if (game && game.running && game.paused) pauseScreen.hidden = false;   // before focus returns to it
+    hideOverlay(infoScreen);
     resize();
     setTimeout(resize, 150);
     setTimeout(resize, 450);
-    if (game && game.running && game.paused) pauseScreen.hidden = false;
   }
 
   function start() {
@@ -1376,47 +1589,45 @@
     endScreen.hidden = true;
     pauseScreen.hidden = true;
     pauseBtn.hidden = false;
-    pauseBtn.innerHTML = "&#10074;&#10074;";
-    pauseBtn.title = "Pause";
-    pauseBtn.setAttribute("aria-label", "Pause game");
+    renderPauseBtn(false);
     game = newGame();
     clampWorld();
     last = performance.now();
   }
 
   function endGame() {
+    // Whatever the keyboard focused during the round - Pour Again from the last end screen,
+    // the mute button - is stale now. Left in place it would take the end screen's Space
+    // and Enter away from starting the next round.
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
     game.running = false;
     game.pouring = false;
     game.paused = false;
     pauseScreen.hidden = true;
     pauseBtn.hidden = true;
-    sound.over();
-    const isBest = game.score > best;
-    if (isBest) best = game.score;
+    sound.gameOver();
     const earned = game.tipsEarned;
     tips += earned;
     game.tipsEarned = 0;
     const wasRank = rank();
-    if (game.score > peakScore) peakScore = game.score;
+    const isBest = game.score > best;
+    if (isBest) best = game.score;
     const rankedUp = rank() > wasRank;
     saveProgress();   // best, tips and rank all just moved
-    document.getElementById("finalRank").textContent = rank();
-    document.getElementById("finalTips").textContent = tips;
-    document.getElementById("finalScore").textContent = game.score;
-    document.getElementById("finalCups").textContent = game.cupsFilled;
-    document.getElementById("finalBest").textContent = best;
+    renderBank();
+    document.getElementById("finalScore").textContent = num(game.score);
+    document.getElementById("finalCups").textContent = num(game.cupsFilled);
     document.getElementById("endTitle").textContent = isBest && game.score > 0 ? "New Best!" : "Time is Up!";
     document.getElementById("endNote").textContent =
       game.cupsFilled === 0 ? "Not a drop landed. Aim for the cups!" :
       game.cupsFilled < 8 ? "Careful now. Keep the stream on target." :
       game.cupsFilled < 16 ? "Nice pour. Chase the golden cups for triple points." :
       "Bartender energy. Outstanding.";
-    document.getElementById("shareNote").textContent =
-      rankedUp ? "You made " + rankName() + " - the back bar has new stock." :
+    document.getElementById("endStatus").textContent =
+      rankedUp ? "You made " + rankName() + " — the back bar has new stock." :
       earned === 0 ? "No tips this round. Over pour a full cup to earn them." :
       earned === 1 ? "You pocketed a tip. Spend it on Upgrades." :
-      "You pocketed " + earned + " tips. Spend them on Upgrades.";
-    shopBtn.textContent = tips > 0 ? "Upgrades · " + tips : "Upgrades";
+      "You pocketed " + num(earned) + " tips. Spend them on Upgrades.";
     endScreen.hidden = false;
   }
 
@@ -1424,13 +1635,13 @@
   function renderShop() {
     const r = rank();
     const next = nextRank();
-    document.getElementById("tipsCount").textContent = tips;
+    document.getElementById("tipsCount").textContent = num(tips);
     document.getElementById("rankName").textContent = rankName();
-    document.getElementById("rankNum").textContent = "Rank " + r;
+    document.getElementById("rankNum").textContent = "Rank " + num(r);
     document.getElementById("rankNext").textContent = next
-      ? "Score " + next.at.toLocaleString() + " in one round for " + next.name +
-        " (best so far " + peakScore.toLocaleString() + ")"
-      : "Top rank - the whole bar is open to you.";
+      ? "Score " + num(next.at) + " in one round for " + next.name +
+        " (best so far " + num(best) + ")"
+      : "Top rank — the whole bar is open to you.";
 
     upList.innerHTML = "";
     for (const u of UPGRADES) {
@@ -1448,8 +1659,8 @@
       title.textContent = u.name;
       const desc = document.createElement("p");
       desc.textContent = locked
-        ? "Locked until you make " + RANKS[u.rank - 1].name + " - a round worth " +
-          RANKS[u.rank - 1].at.toLocaleString() + " points."
+        ? "Locked until you make " + RANKS[u.rank - 1].name + " — a round worth " +
+          num(RANKS[u.rank - 1].at) + " points."
         : u.desc + (n > 0 ? " Now: " + u.effect(n) + "." : "");
       const pips = document.createElement("div");
       pips.className = "pips";
@@ -1463,14 +1674,15 @@
       main.appendChild(pips);
 
       const buy = document.createElement("button");
+      buy.dataset.id = u.id;
       if (maxed) {
         buy.textContent = "Maxed";
         buy.disabled = true;
       } else if (locked) {
-        buy.textContent = "Rank " + u.rank;
+        buy.textContent = "Rank " + num(u.rank);
         buy.disabled = true;
       } else {
-        buy.textContent = cost + (cost === 1 ? " tip" : " tips");
+        buy.textContent = num(cost) + (cost === 1 ? " tip" : " tips");
         buy.disabled = tips < cost;
         buy.title = "Next: " + u.effect(n + 1);
         buy.addEventListener("click", () => {
@@ -1479,7 +1691,16 @@
           owned[u.id] = n + 1;
           saveProgress();
           sound.bonus();
+          const hadFocus = document.activeElement === buy;   // pressed from the keyboard
           renderShop();
+          // The rebuild just threw away the focused button. Put focus back on the same
+          // upgrade (or on Back to the Bar once it can no longer be bought), or it falls to
+          // the page and the next Enter closes the shop instead of buying the next level.
+          if (hadFocus) {
+            const again = upList.querySelector('button[data-id="' + u.id + '"]');
+            const next = again && !again.disabled ? again : document.getElementById("shopCloseBtn");
+            next.focus();
+          }
         });
       }
 
@@ -1492,25 +1713,24 @@
   function openShop() {
     if (!shopScreen.hidden) return;
     renderShop();
-    shopScreen.hidden = false;
+    showOverlay(shopScreen);
   }
 
   function closeShop() {
     if (shopScreen.hidden) return;
-    shopScreen.hidden = true;
-    shopScreen.scrollTop = 0;
-    shopBtn.textContent = tips > 0 ? "Upgrades · " + tips : "Upgrades";
+    hideOverlay(shopScreen);
+    renderBank();
     resize();
   }
 
   function shareText() {
     const cups = game.cupsFilled;
-    return "I scored " + game.score.toLocaleString() + " in Make it Pour" +
-      " (" + cups + (cups === 1 ? " cup" : " cups") + " filled). Can you beat it?";
+    return "I scored " + num(game.score) + " in Make it Pour" +
+      " (" + num(cups) + (cups === 1 ? " cup" : " cups") + " filled). Can you beat it?";
   }
 
   async function shareScore() {
-    const note = document.getElementById("shareNote");
+    const note = document.getElementById("endStatus");
     const url = location.protocol === "file:" ? "" : location.href.split("#")[0];
     const text = shareText();
     const full = url ? text + " " + url : text;
@@ -1540,7 +1760,7 @@
     if (!resetArmed) { armReset(true); return; }
     resetProgress();
     armReset(false);
-    resetNote.textContent = "Done - the bar is back to opening night.";
+    resetNote.textContent = "Done — the bar is back to opening night.";
   });
   infoScreen.addEventListener("click", (e) => {
     if (resetArmed && e.target !== resetBtn) armReset(false);   // any other tap backs out
@@ -1576,14 +1796,12 @@
 
   const notice = document.getElementById("updateNotice");
   const CHECK_MS = 60000;
+  const TIMEOUT_MS = 10000;
   let current = null;
   let checking = false;
   let timer = 0;
 
-  document.getElementById("updateRefresh").addEventListener("click", (e) => {
-    e.preventDefault();
-    location.reload();
-  });
+  document.getElementById("updateRefresh").addEventListener("click", () => location.reload());
 
   function hash(text) {
     let h = 5381;
@@ -1591,11 +1809,38 @@
     return text.length + ":" + h;
   }
 
+  // A request that never answers would hold `checking` forever and quietly end the checks
+  // for the life of the tab, so it is abandoned after TIMEOUT_MS - body included - and the
+  // next tick tries again.
   async function signature() {
-    const res = await fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store" });
-    if (!res.ok) throw new Error("bad status " + res.status);
-    const tag = res.headers.get("etag") || res.headers.get("last-modified");
-    return tag || hash(await res.text());
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store", signal: abort.signal });
+      if (!res.ok) throw new Error("bad status " + res.status);
+      const text = await res.text();
+      // A 200 that is not the game at all - a host's maintenance page, a captive Wi-Fi
+      // login - is a failed check, not a new version to send the player off to.
+      if (text.indexOf('<canvas id="game"') < 0) throw new Error("not the game page");
+      return { etag: res.headers.get("etag"), modified: res.headers.get("last-modified"), body: hash(text) };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  // The page's own bytes decide, with one exception: a validator the host sends
+  // unchanged means unchanged even if the bytes differ, because some hosts inject
+  // per-request content (a nonce, a bot-check token) into an unchanged page. The ETag is
+  // that validator when the host sends one. Last-Modified only stands in when neither
+  // response has an ETag: reproducible builds and store-based hosts serve every version
+  // with the same fixed timestamp, and there a changed ETag must still count. A validator
+  // that differs proves nothing - nginx and GitHub Pages derive both from the file's
+  // mtime, which a redeploy of identical bytes bumps - so the bytes decide.
+  const same = (x, y) => !!x && x === y;
+  function changed(a, b) {
+    if (same(a.etag, b.etag)) return false;
+    if (!a.etag && !b.etag && same(a.modified, b.modified)) return false;
+    return a.body !== b.body;
   }
 
   async function check() {
@@ -1604,12 +1849,12 @@
     try {
       const sig = await signature();
       if (current === null) current = sig;
-      else if (sig !== current) {
+      else if (changed(current, sig)) {
         notice.hidden = false;
         clearInterval(timer);
       }
     } catch (err) {
-      // Offline or the host is unhappy - try again on the next tick.
+      // Offline, timed out or the host is unhappy - try again on the next tick.
     } finally {
       checking = false;
     }
