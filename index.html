@@ -244,7 +244,7 @@
 <div id="controls">
   <button id="pause" title="Pause" aria-label="Pause game" hidden>&#10074;&#10074;</button>
   <button id="info" title="How to play" aria-label="How to play">&#8505;</button>
-  <button id="mute" title="Toggle sound" aria-label="Toggle sound">&#128266;</button>
+  <button id="mute" title="Mute" aria-label="Mute sound">&#128266;</button>
 </div>
 
 <div class="overlay" id="startScreen">
@@ -470,8 +470,12 @@
 
   const muteBtn = document.getElementById("mute");
 
+  // Like the pause button, the label names what a tap will do, so a screen reader (or a
+  // hover) can tell whether sound is on without the icon.
   function renderMuteBtn() {
     muteBtn.innerHTML = sound.on ? "&#128266;" : "&#128263;";
+    muteBtn.title = sound.on ? "Mute" : "Unmute";
+    muteBtn.setAttribute("aria-label", sound.on ? "Mute sound" : "Unmute sound");
   }
 
   muteBtn.addEventListener("click", (e) => {
@@ -1365,9 +1369,13 @@
       last = performance.now();   // don't hand the first frame the whole pause as dt
     }
     pauseScreen.hidden = !on;
-    pauseBtn.innerHTML = on ? "&#9654;" : "&#10074;&#10074;";
-    pauseBtn.title = on ? "Resume" : "Pause";
-    pauseBtn.setAttribute("aria-label", on ? "Resume game" : "Pause game");
+    renderPauseBtn(on);
+  }
+
+  function renderPauseBtn(paused) {
+    pauseBtn.innerHTML = paused ? "&#9654;" : "&#10074;&#10074;";
+    pauseBtn.title = paused ? "Resume" : "Pause";
+    pauseBtn.setAttribute("aria-label", paused ? "Resume game" : "Pause game");
   }
 
   function togglePause() {
@@ -1413,9 +1421,7 @@
     endScreen.hidden = true;
     pauseScreen.hidden = true;
     pauseBtn.hidden = false;
-    pauseBtn.innerHTML = "&#10074;&#10074;";
-    pauseBtn.title = "Pause";
-    pauseBtn.setAttribute("aria-label", "Pause game");
+    renderPauseBtn(false);
     game = newGame();
     clampWorld();
     last = performance.now();
