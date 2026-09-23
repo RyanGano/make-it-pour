@@ -166,8 +166,9 @@ anywhere, and *Reset Everything* in the ℹ panel deletes the key.
 ## Tech
 
 Vanilla HTML/CSS/JS on a single `<canvas>` — no dependencies, no bundler. The only network
-traffic is a once-a-minute check of `index.html` itself: if its contents change, a small
-"There's an update — refresh" notice appears in the bottom right. A check that fails, takes
+traffic is a once-a-minute check of `index.html` itself: if its `ETag` changes (or, when either
+response lacks one, its contents), a small "There's an update — refresh" notice appears in the
+bottom right. A check that fails, takes
 longer than 10 seconds, or gets back something other than the game (a host's maintenance page,
 say) is ignored and retried on the next tick. The check is skipped when the page is opened over
 `file:`.

@@ -1691,17 +1691,23 @@
     try {
       const res = await fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store", signal: abort.signal });
       if (!res.ok) throw new Error("bad status " + res.status);
-      // Compare the page itself, not its headers. The body comes down either way, and
-      // headers drift without a deploy: an ETag that one response carries and the next
-      // does not, or a Last-Modified bumped by re-uploading an identical file.
       const text = await res.text();
       // A 200 that is not the game at all - a host's maintenance page, a captive Wi-Fi
       // login - is a failed check, not a new version to send the player off to.
       if (text.indexOf('<canvas id="game"') < 0) throw new Error("not the game page");
-      return hash(text);
+      return { etag: res.headers.get("etag"), body: hash(text) };
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  // When both responses carry an ETag, trust it: the host is saying which deploy this is,
+  // and some hosts inject per-request bytes (a nonce, a bot-check token) into an unchanged
+  // page. When either lacks one - a CDN edge or proxy that strips it - compare the page
+  // itself instead of an ETag against nothing. Last-Modified is never used: re-uploading
+  // an identical file bumps it without a new version.
+  function changed(a, b) {
+    return a.etag && b.etag ? a.etag !== b.etag : a.body !== b.body;
   }
 
   async function check() {
@@ -1710,7 +1716,7 @@
     try {
       const sig = await signature();
       if (current === null) current = sig;
-      else if (sig !== current) {
+      else if (changed(current, sig)) {
         notice.hidden = false;
         clearInterval(timer);
       }
