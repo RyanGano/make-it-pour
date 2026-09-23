@@ -1618,8 +1618,14 @@
     try {
       const res = await fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store", signal: abort.signal });
       if (!res.ok) throw new Error("bad status " + res.status);
-      const tag = res.headers.get("etag") || res.headers.get("last-modified");
-      return tag || hash(await res.text());
+      // Compare the page itself, not its headers. The body comes down either way, and
+      // headers drift without a deploy: an ETag that one response carries and the next
+      // does not, or a Last-Modified bumped by re-uploading an identical file.
+      const text = await res.text();
+      // A 200 that is not the game at all - a host's maintenance page, a captive Wi-Fi
+      // login - is a failed check, not a new version to send the player off to.
+      if (text.indexOf('<canvas id="game"') < 0) throw new Error("not the game page");
+      return hash(text);
     } finally {
       clearTimeout(timeout);
     }

@@ -165,8 +165,10 @@ anywhere, and *Reset Everything* in the ℹ panel deletes the key.
 ## Tech
 
 Vanilla HTML/CSS/JS on a single `<canvas>` — no dependencies, no bundler. The only network
-traffic is a once-a-minute check of `index.html` itself: if its `ETag`/`Last-Modified` (or, on
-hosts that send neither, its contents) changes, a small "There's an update — refresh" notice
-appears in the bottom right. That check is skipped when the page is opened over `file:`.
+traffic is a once-a-minute check of `index.html` itself: if its contents change, a small
+"There's an update — refresh" notice appears in the bottom right. A check that fails, takes
+longer than 10 seconds, or gets back something other than the game (a host's maintenance page,
+say) is ignored and retried on the next tick. The check is skipped when the page is opened over
+`file:`.
 Pointer Events unify mouse and multi-touch input, and the canvas is device-pixel-ratio aware,
 so it stays crisp on high-DPI phones.
