@@ -1474,6 +1474,9 @@
       pointers.clear();
     } else {
       last = performance.now();   // don't hand the first frame the whole pause as dt
+      // The (i) panel pauses the round and the resume button stays reachable above it.
+      // Resuming takes the panel down too, or the clock would drain unseen behind it.
+      closeInfo();
     }
     pauseScreen.hidden = !on;
     renderPauseBtn(on);
