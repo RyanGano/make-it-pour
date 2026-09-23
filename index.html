@@ -232,12 +232,19 @@
     box-shadow: 0 8px 24px rgba(0,0,0,.4);
   }
   #updateNotice[hidden] { display: none; }
-  #updateNotice a {
-    color: var(--accent);
+  #updateNotice button {
+    padding: 0;
+    font-size: inherit;
     font-weight: 800;
-    cursor: pointer;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--accent);
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
     text-decoration: underline;
   }
+  #updateNotice button:active { transform: none; }
 </style>
 </head>
 <body>
@@ -369,7 +376,7 @@
 </div>
 
 <div id="updateNotice" role="status" hidden>
-  <span>There's an update</span><a href="#" id="updateRefresh">refresh</a>
+  <span>There's an update</span><button type="button" id="updateRefresh">refresh</button>
 </div>
 
 <script>
@@ -1697,10 +1704,7 @@
   let checking = false;
   let timer = 0;
 
-  document.getElementById("updateRefresh").addEventListener("click", (e) => {
-    e.preventDefault();
-    location.reload();
-  });
+  document.getElementById("updateRefresh").addEventListener("click", () => location.reload());
 
   function hash(text) {
     let h = 5381;
