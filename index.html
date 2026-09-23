@@ -447,20 +447,28 @@
         // No audio this time; the next gesture tries again.
       }
     },
+    // Called from inside update(), so a throw here would stop the frame loop and freeze
+    // the round for good. Older prefixed engines return nothing from connect(), which is
+    // why the nodes are wired one call at a time rather than chained.
     blip(freq, dur, type, gain) {
       if (!this.on || !this.ctx) return;
-      const t = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = type || "sine";
-      osc.frequency.setValueAtTime(freq, t);
-      osc.frequency.exponentialRampToValueAtTime(freq * 1.6, t + dur);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(gain || 0.12, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      osc.connect(g).connect(this.ctx.destination);
-      osc.start(t);
-      osc.stop(t + dur + 0.02);
+      try {
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = type || "sine";
+        osc.frequency.setValueAtTime(freq, t);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.6, t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain || 0.12, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(g);
+        g.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + dur + 0.02);
+      } catch (e) {
+        // A missed sound effect is not worth a frozen round.
+      }
     },
     drip() { if (Math.random() < 0.25) this.blip(420 + Math.random() * 260, 0.05, "sine", 0.03); },
     fill() { this.blip(520, 0.18, "triangle", 0.16); },
