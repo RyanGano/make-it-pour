@@ -516,20 +516,21 @@
   // ------------------------------------------------------------- state
   const ROUND_TIME = 60;
   const CUP_SCORE = 100;           // points for filling a cup, before the combo and Top Shelf
-  const GOLDEN_SCORE_MULT = 3;     // a golden cup scores this many cups' worth
+  const GOLDEN_SCORE_MULT = 3;     // a golden cup scores this many cups' worth ("triple" in the copy)
   const COMBO_CAP = 9;             // the combo tops out here until Hot Streak raises it
   const GRAVITY = 1500;
   const SPOUT_DX = 26;         // how far the spout sits from the bottle's centre
   const POUR_RATE = 34;
   const COMBO_WINDOW = 4.0;
   const OVERFILL_TIME = 0.15;      // seconds added by each over pour payout
-  const OVERFILL_INTERVAL = 0.3;   // one payout per this much time held on a full cup
+  const OVERFILL_INTERVAL = 0.3;   // one payout per this much time held on a full cup ("every third of a second" in the copy)
   const TIP_TIERS = 2;             // a payout's tips climb by one each time, up to this
   const GOLD_FILL_TIPS = 8;        // a golden cup tips you for finishing it, over pour or not
   const OVERFILL_WINDOW = 2.0;     // a cup stops paying after this long of over pouring
   const OVERFILL_GRACE = 0.25;     // over pouring ends if no drop lands for this long
-  const OVERFILL_FREE = 0.45;      // over pouring this long is on the house: clock, no tips, no combo
+  const OVERFILL_FREE = 0.45;      // over pouring this long is on the house: clock, no tips, no combo ("half second" in the copy)
   const GOLDEN_TIME_MULT = 2;  // golden cups are worth that much clock
+  const GOLDEN_TIP_MULT = 2;   // ...and that many times the tips ("double" in the copy)
   const MAX_SPEED_SCALE = 4;   // cups never get faster than this multiple
   const DRAIN_PER_UNFILLED = 0.05; // each unfilled cup on screen speeds the clock up by this much
   const CUP_COLORS = ["#46e3ff", "#7dff9b", "#ff8fd0", "#ffb457", "#b78bff"];
@@ -709,8 +710,11 @@
 
   loadProgress();
 
-  // The rules in the info panel quote the game's own numbers, so tuning a constant cannot
-  // leave them out of date, and they read in the player's locale like every other number.
+  // The figures the info panel quotes are filled from the constants below, so tuning one
+  // updates the rules, and they read in the player's locale like every other number.
+  // Words are not covered: "triple", "double", "every third of a second" and "half
+  // second" in the panel and the shop still need editing by hand alongside their
+  // constants, which point back to them.
   const RULES = {
     cupScore: CUP_SCORE,
     goldenScore: CUP_SCORE * GOLDEN_SCORE_MULT,
@@ -1165,7 +1169,7 @@
     if (c.overfillElapsed < OVERFILL_FREE) return;
 
     c.overfillPayouts++;
-    const addTips = Math.min(c.overfillPayouts, tipCap()) * (c.golden ? 2 : 1);
+    const addTips = Math.min(c.overfillPayouts, tipCap()) * (c.golden ? GOLDEN_TIP_MULT : 1);
     g.tipsEarned += addTips;
     popText(c.x, top - 46, "+" + num(addTips) + (addTips === 1 ? " tip" : " tips"), "#ffd25a");
 
