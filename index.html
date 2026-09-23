@@ -639,8 +639,9 @@
       if (!raw) return;
       const data = JSON.parse(raw);
       if (!data || data.v !== SAVE_VERSION) return;
-      // Saves before this build also kept a peakScore beside best. The two were always
-      // updated together, so take whichever is higher rather than lose a rank.
+      // Older builds kept a separate peakScore beside best, always updated together, so
+      // take whichever is higher rather than lose a rank. It is still written (below) so a
+      // tab running an older build does not read this save as rank 1.
       best = Math.max(wholeNumber(data.best), wholeNumber(data.peakScore));
       tips = wholeNumber(data.tips);
       // Only ids the shop still stocks, and never past the levels it sells, so an old or
@@ -657,7 +658,8 @@
   function saveProgress() {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: SAVE_VERSION, best: best, tips: tips, owned: owned
+        v: SAVE_VERSION, best: best, tips: tips, owned: owned,
+        peakScore: best   // older builds rank by this field; drop it once they are long gone
       }));
     } catch (e) {
       // Storage full or blocked - the session still plays, it just will not survive a reload.
