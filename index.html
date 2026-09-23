@@ -892,14 +892,19 @@
     return el instanceof Element && !!el.closest("button") && el.getClientRects().length > 0;
   }
 
-  // The mouse never focuses a button. Chrome and Edge focus one on mousedown - even when
-  // the press is dragged off or ends in a context menu and no click follows - and Space
-  // on the end screen would then press the mute button you last touched instead of
-  // starting a round. Safari and Firefox on the Mac already behave this way. Clicks, and
-  // the :active press style, are unaffected.
-  document.addEventListener("mousedown", (e) => {
-    if (e.target instanceof Element && e.target.closest("button")) e.preventDefault();
-  }, true);
+  // The mouse never leaves focus on a button. Chrome and Edge focus one on mousedown, and
+  // Space on the end screen would then press the mute button you last touched instead of
+  // starting a round. Focus is let go when the press ends - mouseup reaches the window
+  // even when the press was dragged off the button, and a right-click ends in a context
+  // menu instead - which is how Safari and Firefox on the Mac behave anyway. Cancelling
+  // mousedown would stop the focus at the source, but Firefox then drops the :active
+  // press style too.
+  function dropPointerFocus() {
+    const el = document.activeElement;
+    if (el instanceof Element && el.closest("button")) el.blur();
+  }
+  window.addEventListener("mouseup", dropPointerFocus, true);
+  window.addEventListener("contextmenu", dropPointerFocus, true);
 
   // Only one layer takes input at a time. The info panel sits over everything and the
   // shop over the start, end and pause screens; whatever an open overlay covers is made
