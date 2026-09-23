@@ -926,6 +926,7 @@
     const fy = floorY();
     for (let i = g.drops.length - 1; i >= 0; i--) {
       const d = g.drops[i];
+      const prevY = d.y;
       d.vy += GRAVITY * dt;
       d.x += d.vx * dt;
       d.y += d.vy * dt;
@@ -944,7 +945,10 @@
 
       for (const c of g.cups) {
         const rimY = fy - c.h;
-        if (d.y >= rimY && d.y <= rimY + 30 && Math.abs(d.x - c.x) < c.w / 2 - 4) {
+        // Test whether the drop crossed into the mouth this frame, not whether it happens to
+        // be sitting in it: a falling drop covers 40px or more per frame at 30fps, enough to
+        // step clean over a 30px band and splash on the floor under a cup it was aimed at.
+        if (d.y >= rimY && prevY <= rimY + 30 && Math.abs(d.x - c.x) < c.w / 2 - 4) {
           c.wobble = 1;
           consumed = true;
           splash(d.x, rimY, c.color, 2, 60);
