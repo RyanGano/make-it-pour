@@ -1025,7 +1025,7 @@
     const fy = floorY();
     for (let i = g.drops.length - 1; i >= 0; i--) {
       const d = g.drops[i];
-      const prevY = d.y;
+      const prevX = d.x, prevY = d.y;
       d.vy += GRAVITY * dt;
       d.x += d.vx * dt;
       d.y += d.vy * dt;
@@ -1033,7 +1033,7 @@
       let consumed = false;
       for (let j = g.bubbles.length - 1; j >= 0; j--) {
         const bub = g.bubbles[j];
-        if (Math.hypot(d.x - bub.x, d.y - bub.y) < bub.r) {
+        if (sweptHit(prevX, prevY, d.x, d.y, bub.x, bub.y, bub.r)) {
           popBubble(bub);
           g.bubbles.splice(j, 1);
           consumed = true;
@@ -1087,6 +1087,16 @@
     }
 
     if (g.shake > 0) g.shake = Math.max(0, g.shake - dt * 3);
+  }
+
+  // Did a drop that moved from (x0, y0) to (x1, y1) this frame pass within r of (cx, cy)?
+  // Testing only where it ended up lets a fast drop hop clean over a bubble at low frame
+  // rates, the same way it used to hop over a cup's rim.
+  function sweptHit(x0, y0, x1, y1, cx, cy, r) {
+    const dx = x1 - x0, dy = y1 - y0;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 ? clamp(((cx - x0) * dx + (cy - y0) * dy) / len2, 0, 1) : 0;
+    return Math.hypot(x0 + t * dx - cx, y0 + t * dy - cy) < r;
   }
 
   function fillCup(c) {
