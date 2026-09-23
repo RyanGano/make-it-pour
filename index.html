@@ -698,7 +698,11 @@
     for (const k of Object.keys(owned)) delete owned[k];
     if (game) game.tipsEarned = 0;   // nothing from this round survives it either
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
-    renderBank();   // the end screen may be sitting behind the info panel, still showing the old bar
+    // The end screen may be sitting behind the info panel, still describing the old bar:
+    // its stats, and the round's news - 'New Best!', a rank-up, the tips just pocketed.
+    renderBank();
+    document.getElementById("endTitle").textContent = "Time is Up!";
+    document.getElementById("endStatus").textContent = "";
     if (!shopScreen.hidden) renderShop();
   }
 
