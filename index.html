@@ -428,12 +428,21 @@
   const sound = {
     on: loadSoundOn(),
     ctx: null,
+    // Sound is a nice-to-have. This runs first thing in start() and on every tap and key,
+    // so a browser that refuses an AudioContext must cost the player the sound, never the game.
     resume() {
-      if (!this.ctx) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (AC) this.ctx = new AC();
+      try {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) this.ctx = new AC();
+        }
+        if (this.ctx && this.ctx.state === "suspended") {
+          const p = this.ctx.resume();
+          if (p && p.catch) p.catch(() => {});
+        }
+      } catch (e) {
+        // No audio this time; the next gesture tries again.
       }
-      if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
     },
     blip(freq, dur, type, gain) {
       if (!this.on || !this.ctx) return;
