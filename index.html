@@ -91,8 +91,8 @@
     border: 1px solid rgba(70,227,255,.35);
   }
   button.secondary:active { box-shadow: none; }
-  #shareNote { min-height: 1.2em; font-size: 13px; color: var(--accent); }
-  #shareNote:empty { visibility: hidden; }
+  #endStatus { min-height: 1.2em; font-size: 13px; color: var(--accent); }
+  #endStatus:empty { visibility: hidden; }
   .hint { font-size: 13px; color: var(--muted); }
   .hint kbd { background: rgba(255,255,255,.1); border-radius: 5px; padding: 2px 7px; font-family: inherit; }
   #controls {
@@ -277,7 +277,7 @@
     <button id="shopBtn" class="secondary">Upgrades</button>
     <button id="shareBtn" class="secondary">Share</button>
   </div>
-  <p id="shareNote" role="status"></p>
+  <p id="endStatus" role="status"></p>
 </div>
 
 <div class="overlay" id="infoScreen" hidden>
@@ -1261,6 +1261,9 @@
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+  }
+
+  function drawPops() {
     ctx.textAlign = "center";
     ctx.font = "800 24px system-ui, sans-serif";
     for (const p of game.pops) {
@@ -1332,6 +1335,7 @@
       drawStream();
       drawDrops();
       drawBits();
+      drawPops();
       drawBottle();
       drawHud();
     }
@@ -1438,7 +1442,7 @@
       game.cupsFilled < 8 ? "Careful now. Keep the stream on target." :
       game.cupsFilled < 16 ? "Nice pour. Chase the golden cups for triple points." :
       "Bartender energy. Outstanding.";
-    document.getElementById("shareNote").textContent =
+    document.getElementById("endStatus").textContent =
       rankedUp ? "You made " + rankName() + " - the back bar has new stock." :
       earned === 0 ? "No tips this round. Over pour a full cup to earn them." :
       earned === 1 ? "You pocketed a tip. Spend it on Upgrades." :
@@ -1536,7 +1540,7 @@
   }
 
   async function shareScore() {
-    const note = document.getElementById("shareNote");
+    const note = document.getElementById("endStatus");
     const url = location.protocol === "file:" ? "" : location.href.split("#")[0];
     const text = shareText();
     const full = url ? text + " " + url : text;
