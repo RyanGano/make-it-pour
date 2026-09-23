@@ -51,6 +51,7 @@
     z-index: 10;
   }
   .overlay[hidden] { display: none; }
+  .overlay:focus { outline: none; }   /* focused only to take keys off what it covers */
   h1 {
     font-size: clamp(38px, 12vw, 86px);
     line-height: .95;
@@ -280,7 +281,7 @@
   <p id="endStatus" role="status"></p>
 </div>
 
-<div class="overlay" id="infoScreen" hidden>
+<div class="overlay" id="infoScreen" tabindex="-1" hidden>
   <div class="panel">
     <h2>How to Play</h2>
     <p>Cups slide along the floor. Move the bottle over one, pour, and keep the stream on
@@ -350,7 +351,7 @@
   </div>
 </div>
 
-<div class="overlay" id="shopScreen" hidden>
+<div class="overlay" id="shopScreen" tabindex="-1" hidden>
   <div class="panel">
     <h2>The Back Bar</h2>
     <div class="tips-bar"><b id="tipsCount">0</b><span>tips to spend</span></div>
@@ -821,15 +822,18 @@
   canvas.addEventListener("pointercancel", releasePointer);
 
   window.addEventListener("keydown", (e) => {
-    // A button the player tabbed to answers Enter and Space with a click of its own.
-    // Outside live play let it have the key, or one press does two things: start a round
-    // and open the shop over it, or buy an upgrade and close the shop in the same breath.
-    // A button that only has focus because it was clicked (the mute or (i) button, say)
-    // was not chosen for the keyboard, so there the keys keep their game meaning - and
-    // the preventDefault below stops that button from being pressed again as well.
+    // Focus only ever sits on a button because the keyboard put it there (a pointer click
+    // lets go of it, below), so a focused, visible button is one the player chose. Outside
+    // live play it gets Enter and Space to itself, or one press does two things: start a
+    // round and open the shop over it, or buy an upgrade and close the shop at once.
     const playing = game && game.running && !game.paused;
-    if (!playing && !e.repeat && (e.code === "Enter" || e.code === "Space") && keyboardFocused(e.target)) return;
-    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space", "Enter"].indexOf(e.code) >= 0) e.preventDefault();
+    const onButton = (e.code === "Enter" || e.code === "Space") && isLiveButton(e.target);
+    if (!playing && !e.repeat && onButton) return;
+    // Enter has no job during play, so there it still presses a focused control (mute,
+    // pause, the update notice). Anywhere else the game owns it - including when focus is
+    // stranded on a button that has since been hidden, which must never be pressed.
+    const gameKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"];
+    if (gameKeys.indexOf(e.code) >= 0 || (e.code === "Enter" && !(playing && onButton))) e.preventDefault();
     keys.add(e.code);
     sound.resume();
     if (e.code === "Space" && playing) game.pouring = true;
@@ -850,35 +854,34 @@
     if ((e.code === "Enter" || e.code === "Space") && (!startScreen.hidden || !endScreen.hidden)) start();
     if (e.code === "KeyP" || e.code === "Escape") togglePause();
   });
-  // Which button a pointer press last focused. :focus-visible cannot answer this from a
-  // keydown handler - Chrome promotes the focused element to it on that very key press.
-  let clickFocused = null;
-  document.addEventListener("pointerdown", (e) => {
-    clickFocused = e.target instanceof Element ? e.target.closest("button, a") : null;
-  }, true);
-  document.addEventListener("focusin", (e) => {
-    if (e.target !== clickFocused) clickFocused = null;   // focus moved by Tab or by code
-  }, true);
-
-  function keyboardFocused(el) {
-    return el instanceof Element && !!el.closest("button, a") && el !== clickFocused;
+  function isLiveButton(el) {
+    return el instanceof Element && !!el.closest("button, a") && el.getClientRects().length > 0;
   }
 
-  // An overlay notes what had focus when it opened, and hands focus back when it closes.
-  // Left alone, focus stays on one of its now-hidden buttons, where the next Enter presses
-  // a button nobody can see instead of starting the round.
-  function noteFocus() {
-    const el = document.activeElement;
-    return { el, clicked: el === clickFocused };
+  // A pointer click lets go of the button it pressed. Chrome and Edge would otherwise leave
+  // focus there, and Space on the end screen would press the mute button you last clicked
+  // instead of starting a round. Safari and Firefox on the Mac already behave this way.
+  document.addEventListener("click", (e) => {
+    const el = e.detail > 0 && e.target instanceof Element ? e.target.closest("button, a") : null;
+    if (el) el.blur();
+  }, true);
+
+  // Opening an overlay moves keyboard focus into it, off the buttons it now covers, and
+  // closing it hands focus back to whatever held it - once the screen underneath is
+  // visible again, since a hidden button cannot take focus. With no keyboard focus to
+  // begin with, there is nothing to move. Whether focus was inside has to be read before
+  // the overlay is hidden: Chrome lets go of focus in a hidden element straight away.
+  function enterOverlay(screen) {
+    const opener = document.activeElement;
+    if (!opener || opener === document.body) return null;
+    screen.focus({ preventScroll: true });
+    return opener;
   }
 
-  function restoreFocus(screen, opener) {
-    if (!screen.contains(document.activeElement)) return;
-    if (opener && opener.el && opener.el !== document.body && !screen.contains(opener.el)) {
-      opener.el.focus();
-      if (opener.clicked) clickFocused = opener.el;   // still a click's focus, not the keyboard's
-    }
-    if (screen.contains(document.activeElement)) document.activeElement.blur();   // opener gone or hidden
+  function leaveOverlay(screen, opener, hadFocus) {
+    if (!hadFocus) return;
+    if (opener && isLiveButton(opener)) opener.focus({ preventScroll: true });
+    else if (screen.contains(document.activeElement)) document.activeElement.blur();
   }
 
   window.addEventListener("keyup", (e) => {
@@ -1433,11 +1436,11 @@
   let infoOpener = null;
   function openInfo() {
     if (infoScreen.hidden === false) return;
-    infoOpener = noteFocus();
     setPaused(true);
     pauseScreen.hidden = true;
     armReset(false);
     infoScreen.hidden = false;
+    infoOpener = enterOverlay(infoScreen);
   }
 
   // Reset asks twice. The button is a few inches from the rules a new player is reading,
@@ -1452,13 +1455,14 @@
   function closeInfo() {
     if (infoScreen.hidden) return;
     armReset(false);
+    const hadFocus = infoScreen.contains(document.activeElement);
     infoScreen.hidden = true;
     infoScreen.scrollTop = 0;
-    restoreFocus(infoScreen, infoOpener);
+    if (game && game.running && game.paused) pauseScreen.hidden = false;
+    leaveOverlay(infoScreen, infoOpener, hadFocus);
     resize();
     setTimeout(resize, 150);
     setTimeout(resize, 450);
-    if (game && game.running && game.paused) pauseScreen.hidden = false;
   }
 
   function start() {
@@ -1470,6 +1474,9 @@
     pauseScreen.hidden = true;
     pauseBtn.hidden = false;
     renderPauseBtn(false);
+    // A Start or Pour Again pressed from the keyboard has just been hidden; let go of it.
+    const focused = document.activeElement;
+    if (startScreen.contains(focused) || endScreen.contains(focused)) focused.blur();
     game = newGame();
     clampWorld();
     last = performance.now();
@@ -1567,8 +1574,7 @@
           owned[u.id] = n + 1;
           saveProgress();
           sound.bonus();
-          const hadFocus = document.activeElement === buy;
-          const wasClicked = clickFocused === buy;
+          const hadFocus = document.activeElement === buy;   // pressed from the keyboard
           renderShop();
           // The rebuild just threw away the focused button. Put focus back on the same
           // upgrade (or on Back to the Bar once it can no longer be bought), or it falls to
@@ -1577,7 +1583,6 @@
             const again = upList.querySelector('button[data-id="' + u.id + '"]');
             const next = again && !again.disabled ? again : document.getElementById("shopCloseBtn");
             next.focus();
-            if (wasClicked) clickFocused = next;   // still the mouse's focus, not the keyboard's
           }
         });
       }
@@ -1591,16 +1596,17 @@
   let shopOpener = null;
   function openShop() {
     if (!shopScreen.hidden) return;
-    shopOpener = noteFocus();
     renderShop();
     shopScreen.hidden = false;
+    shopOpener = enterOverlay(shopScreen);
   }
 
   function closeShop() {
     if (shopScreen.hidden) return;
+    const hadFocus = shopScreen.contains(document.activeElement);
     shopScreen.hidden = true;
     shopScreen.scrollTop = 0;
-    restoreFocus(shopScreen, shopOpener);
+    leaveOverlay(shopScreen, shopOpener, hadFocus);
     renderBank();
     resize();
   }
