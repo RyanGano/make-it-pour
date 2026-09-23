@@ -394,8 +394,16 @@
   // Every number the player reads - score, tips, prices, ranks, seconds, rates - goes
   // through here, so a 20,000 in the shop is never a 20000 on the end screen, and a player
   // whose locale writes 1,5 or ۳ sees that everywhere, not in some places and not others.
-  const num = (n, digits = 0) =>
-    n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  // The HUD formats several numbers every frame, and toLocaleString with options builds a
+  // fresh formatter on each call, so keep one per number of decimal places.
+  const numberFormats = [];
+  function num(n, digits = 0) {
+    if (!numberFormats[digits]) {
+      numberFormats[digits] = new Intl.NumberFormat(undefined,
+        { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    }
+    return numberFormats[digits].format(n);
+  }
 
   let W = 0, H = 0;
 
@@ -1286,7 +1294,7 @@
       ctx.fillStyle = "rgba(234,242,255,.75)";
       ctx.font = "700 12px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(Math.round(pct * 100) + "%", c.x, topY - 8);
+      ctx.fillText(num(Math.round(pct * 100)) + "%", c.x, topY - 8);
       ctx.restore();
     }
   }
