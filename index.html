@@ -1771,20 +1771,21 @@
       // A 200 that is not the game at all - a host's maintenance page, a captive Wi-Fi
       // login - is a failed check, not a new version to send the player off to.
       if (text.indexOf('<canvas id="game"') < 0) throw new Error("not the game page");
-      return { etag: res.headers.get("etag"), body: hash(text) };
+      return { etag: res.headers.get("etag"), modified: res.headers.get("last-modified"), body: hash(text) };
     } finally {
       clearTimeout(timeout);
     }
   }
 
-  // The page's own bytes decide, with one exception: a matching ETag means unchanged even
-  // if the bytes differ, because some hosts inject per-request content (a nonce, a
-  // bot-check token) into an unchanged page. A differing ETag proves nothing - nginx and
-  // GitHub Pages build it from the file's mtime, which a redeploy of identical bytes
-  // bumps - and neither does a missing one. Last-Modified is never used, for the same
-  // mtime reason.
+  // The page's own bytes decide, with one exception: a validator the host sends
+  // unchanged - the same ETag or the same Last-Modified - means unchanged even if the
+  // bytes differ, because some hosts inject per-request content (a nonce, a bot-check
+  // token) into an unchanged page. A validator that differs proves nothing: nginx and
+  // GitHub Pages build both from the file's mtime, which a redeploy of identical bytes
+  // bumps. The notice cannot be dismissed, so a missed update is the cheaper mistake.
+  const same = (x, y) => !!x && x === y;
   function changed(a, b) {
-    if (a.etag && b.etag && a.etag === b.etag) return false;
+    if (same(a.etag, b.etag) || same(a.modified, b.modified)) return false;
     return a.body !== b.body;
   }
 
