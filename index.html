@@ -431,6 +431,7 @@
     canvas.height = Math.floor(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     clampWorld();
+    if (!shopScreen.hidden) renderShop();   // Steady Hands' quote depends on the screen height
   }
 
   // ------------------------------------------------------------- audio
@@ -537,7 +538,8 @@
   const BOTTLE_TOP = 60;           // the highest the bottle can be carried
   const BOTTLE_REACH = 0.42;       // how far down the screen the bottle starts out able to go
   const REACH_PER_LEVEL = 0.08;    // each Steady Hands level buys this much more of the screen
-  const SPOUT_DY = 22;             // drops leave this far below the bottle's centre, give or take 3
+  const SPOUT_DY = 22;             // drops leave this far below the bottle's centre...
+  const SPOUT_JITTER = 3;          // ...give or take this much
   const CUP_MIN_W = 56;            // cups are this wide...
   const CUP_MAX_W = 84;            // ...up to this
   const CUP_HEIGHT = 1.15;         // and this many times as tall as they are wide
@@ -637,18 +639,24 @@
   // The deepest the bottle can go with every drop still starting above the catch band of
   // the tallest cup. Any lower and the stream starts under the rims and falls through.
   function lowestPour() {
-    const clearance = CUP_MAX_W * CUP_HEIGHT - CATCH_BAND + SPOUT_DY + 3;
+    const clearance = CUP_MAX_W * CUP_HEIGHT - CATCH_BAND + SPOUT_DY + SPOUT_JITTER;
     return Math.max(BOTTLE_TOP, floorY() - clearance);
   }
 
-  // Steady Hands levels share out the room between the starting reach and the full reach,
-  // both kept above lowestPour(). On a tall screen that is REACH_PER_LEVEL of the height a
-  // level, exactly as priced; on a short one - a phone on its side - every level still adds
-  // an equal part of whatever room there is, so no level is sold for nothing.
+  // Steady Hands levels step evenly from the starting reach to the full reach. On a tall
+  // screen that is REACH_PER_LEVEL of the height a level, exactly as priced. When the full
+  // reach would pass lowestPour() - a phone on its side - the whole range is scaled down to
+  // fit between BOTTLE_TOP and lowestPour(), keeping its proportions, so every level still
+  // adds an equal part of the room there is and none is sold for nothing.
   function bottleFloorAt(level) {
     const lowest = lowestPour();
-    const start = Math.min(H * BOTTLE_REACH, lowest);
-    const full = Math.min(H * (BOTTLE_REACH + REACH_LEVELS * REACH_PER_LEVEL), lowest);
+    let start = H * BOTTLE_REACH;
+    let full = H * (BOTTLE_REACH + REACH_LEVELS * REACH_PER_LEVEL);
+    if (full > lowest) {
+      const fit = (lowest - BOTTLE_TOP) / (full - BOTTLE_TOP);
+      start = BOTTLE_TOP + (start - BOTTLE_TOP) * fit;
+      full = lowest;
+    }
     return Math.max(BOTTLE_TOP, start + (full - start) * level / REACH_LEVELS);
   }
   const bottleFloor = () => bottleFloorAt(lvl("reach"));
@@ -1017,7 +1025,7 @@
     for (let i = 0; i < n; i++) {
       game.drops.push({
         x: sx + rand(-4, 4),
-        y: b.y + SPOUT_DY + rand(-3, 3),
+        y: b.y + SPOUT_DY + rand(-SPOUT_JITTER, SPOUT_JITTER),
         vx: rand(-18, 18),
         vy: rand(60, 130),
         r: rand(3, 6)
