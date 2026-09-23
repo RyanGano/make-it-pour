@@ -626,7 +626,11 @@
   const overfillWindow = () =>
     OVERFILL_WINDOW + lvl("sip") * 0.6 + lvl("tipsize") * OVERFILL_INTERVAL;
   const overfillPay = () => OVERFILL_TIME * (1 + lvl("sip") * 0.25);
-  const bottleFloor = () => H * (BOTTLE_REACH + lvl("reach") * REACH_PER_LEVEL);
+  // Never so low that the stream starts below the mouth of the tallest cup (84px wide, so
+  // 97px tall, with a 30px catch band): on a short landscape screen Steady Hands would
+  // otherwise carry the spout under every rim and the whole stream would fall through.
+  const bottleFloor = () =>
+    Math.min(H * (BOTTLE_REACH + lvl("reach") * REACH_PER_LEVEL), floorY() - 92);
   const bubbleEvery = () => BUBBLE_SPAWN[lvl("bubbles")] || 0;
 
   let game = null;
