@@ -1786,14 +1786,17 @@
   }
 
   // The page's own bytes decide, with one exception: a validator the host sends
-  // unchanged - the same ETag or the same Last-Modified - means unchanged even if the
-  // bytes differ, because some hosts inject per-request content (a nonce, a bot-check
-  // token) into an unchanged page. A validator that differs proves nothing: nginx and
-  // GitHub Pages build both from the file's mtime, which a redeploy of identical bytes
-  // bumps. The notice cannot be dismissed, so a missed update is the cheaper mistake.
+  // unchanged means unchanged even if the bytes differ, because some hosts inject
+  // per-request content (a nonce, a bot-check token) into an unchanged page. The ETag is
+  // that validator when the host sends one. Last-Modified only stands in when neither
+  // response has an ETag: reproducible builds and store-based hosts serve every version
+  // with the same fixed timestamp, and there a changed ETag must still count. A validator
+  // that differs proves nothing - nginx and GitHub Pages derive both from the file's
+  // mtime, which a redeploy of identical bytes bumps - so the bytes decide.
   const same = (x, y) => !!x && x === y;
   function changed(a, b) {
-    if (same(a.etag, b.etag) || same(a.modified, b.modified)) return false;
+    if (same(a.etag, b.etag)) return false;
+    if (!a.etag && !b.etag && same(a.modified, b.modified)) return false;
     return a.body !== b.body;
   }
 
