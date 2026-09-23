@@ -1480,11 +1480,13 @@
 
   // ------------------------------------------------------------- loop
   function frame(now) {
+    // Ask for the next frame first, so nothing that throws below - a sound, a formatter,
+    // a DOM update at the end of a round - can stop the loop and freeze the game on screen.
+    requestAnimationFrame(frame);
     const dt = Math.min(0.05, (now - last) / 1000 || 0);
     last = now;
     if (game && game.running && !game.paused) update(dt);
     render();
-    requestAnimationFrame(frame);
   }
 
   // ------------------------------------------------------------- flow
