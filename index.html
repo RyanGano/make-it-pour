@@ -462,7 +462,7 @@
     drip() { if (Math.random() < 0.25) this.blip(420 + Math.random() * 260, 0.05, "sine", 0.03); },
     fill() { this.blip(520, 0.18, "triangle", 0.16); },
     bonus() { this.blip(880, 0.28, "square", 0.1); },
-    over() { this.blip(180, 0.5, "sawtooth", 0.1); }
+    gameOver() { this.blip(180, 0.5, "sawtooth", 0.1); }
   };
 
   const muteBtn = document.getElementById("mute");
@@ -737,10 +737,10 @@
       golden,
       wobble: 0,
       pop: 0,
-      overfillTime: 0,
-      overfillPay: 0,
-      overfillPayouts: 0,
-      overfillHold: 0,
+      overfillElapsed: 0,     // seconds spent over pouring this cup
+      overfillCooldown: 0,    // seconds until it can pay again
+      overfillPayouts: 0,     // tipped payouts so far; each one tips a little more
+      overfillHold: 0,        // grace left before the over pour is over
       life: 0
     };
   }
@@ -925,9 +925,9 @@
       // so the over pour can run for as long as the window allows.
       if (c.overfillHold > 0) {
         c.overfillHold -= dt;
-        c.overfillTime += dt;
-        c.overfillPay -= dt;
-        if (c.overfillTime >= overfillWindow()) c.overfillHold = 0;
+        c.overfillElapsed += dt;
+        c.overfillCooldown -= dt;
+        if (c.overfillElapsed >= overfillWindow()) c.overfillHold = 0;
       } else if (c.pop > 0) {
         c.pop -= dt;
       }
@@ -1028,10 +1028,10 @@
   // the multiplier that would have made this round's score big.
   function overfillCup(c) {
     const g = game;
-    if (c.overfillTime >= overfillWindow()) return;
+    if (c.overfillElapsed >= overfillWindow()) return;
     c.overfillHold = OVERFILL_GRACE;
-    if (c.overfillPay > 0) return;
-    c.overfillPay = OVERFILL_INTERVAL;
+    if (c.overfillCooldown > 0) return;
+    c.overfillCooldown = OVERFILL_INTERVAL;
 
     const top = floorY() - c.h;
     const addTime = overfillPay() * (c.golden ? GOLDEN_TIME_MULT : 1);
@@ -1040,7 +1040,7 @@
     sound.bonus();
 
     // Still inside the free window - the clock paid, nothing was charged, nothing earned.
-    if (c.overfillTime < OVERFILL_FREE) return;
+    if (c.overfillElapsed < OVERFILL_FREE) return;
 
     c.overfillPayouts++;
     const addTips = Math.min(c.overfillPayouts, tipCap()) * (c.golden ? 2 : 1);
@@ -1420,7 +1420,7 @@
     game.paused = false;
     pauseScreen.hidden = true;
     pauseBtn.hidden = true;
-    sound.over();
+    sound.gameOver();
     const earned = game.tipsEarned;
     tips += earned;
     game.tipsEarned = 0;
