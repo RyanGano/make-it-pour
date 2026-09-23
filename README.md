@@ -107,6 +107,9 @@ considerably more for anyone who commits to one currency and stays there.
 
 The bottle's reach starts deliberately short so **Steady Hands** has somewhere to go: a fresh
 bar can only carry the bottle down to 42% of the screen, and the three levels take that to 66%.
+On a very short screen, such as a phone on its side, the bottle is never carried below the
+mouths of the cups, and the three levels share out whatever room there is; the shop quotes what
+each one adds on your screen.
 
 What you buy — and your rank, your tips and your best score — **is saved in your browser and
 survives a reload**. The climb is long enough now that losing a night's tips to a stray
