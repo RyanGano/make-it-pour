@@ -1593,6 +1593,7 @@
 
   const notice = document.getElementById("updateNotice");
   const CHECK_MS = 60000;
+  const TIMEOUT_MS = 10000;
   let current = null;
   let checking = false;
   let timer = 0;
@@ -1608,11 +1609,20 @@
     return text.length + ":" + h;
   }
 
+  // A request that never answers would hold `checking` forever and quietly end the checks
+  // for the life of the tab, so it is abandoned after TIMEOUT_MS - body included - and the
+  // next tick tries again.
   async function signature() {
-    const res = await fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store" });
-    if (!res.ok) throw new Error("bad status " + res.status);
-    const tag = res.headers.get("etag") || res.headers.get("last-modified");
-    return tag || hash(await res.text());
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store", signal: abort.signal });
+      if (!res.ok) throw new Error("bad status " + res.status);
+      const tag = res.headers.get("etag") || res.headers.get("last-modified");
+      return tag || hash(await res.text());
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   async function check() {
@@ -1626,7 +1636,7 @@
         clearInterval(timer);
       }
     } catch (err) {
-      // Offline or the host is unhappy - try again on the next tick.
+      // Offline, timed out or the host is unhappy - try again on the next tick.
     } finally {
       checking = false;
     }
