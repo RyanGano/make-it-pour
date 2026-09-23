@@ -809,16 +809,18 @@
   canvas.addEventListener("pointercancel", releasePointer);
 
   window.addEventListener("keydown", (e) => {
-    // A focused button answers Enter and Space with a click of its own. Outside live play
-    // let it have the key, or one press does two things: start a round and open the shop
-    // over it, or buy an upgrade and close the shop in the same breath.
-    const onButton = e.target instanceof Element && e.target.closest("button, a");
+    // A button the player tabbed to answers Enter and Space with a click of its own.
+    // Outside live play let it have the key, or one press does two things: start a round
+    // and open the shop over it, or buy an upgrade and close the shop in the same breath.
+    // A button that only has focus because it was clicked (the mute or (i) button, say)
+    // was not chosen for the keyboard, so there the keys keep their game meaning - and
+    // the preventDefault below stops that button from being pressed again as well.
     const playing = game && game.running && !game.paused;
-    if (onButton && !playing && (e.code === "Enter" || e.code === "Space")) return;
-    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].indexOf(e.code) >= 0) e.preventDefault();
+    if (!playing && !e.repeat && (e.code === "Enter" || e.code === "Space") && keyboardFocused(e.target)) return;
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space", "Enter"].indexOf(e.code) >= 0) e.preventDefault();
     keys.add(e.code);
     sound.resume();
-    if (e.code === "Space" && game && game.running && !game.paused) game.pouring = true;
+    if (e.code === "Space" && playing) game.pouring = true;
     // A held key repeats. Pouring and moving can ride the repeats, but everything below
     // is a one-shot: a Space held through the end of a round would otherwise restart it
     // before the score was on screen, and a held P would flicker the pause on and off.
@@ -836,6 +838,37 @@
     if ((e.code === "Enter" || e.code === "Space") && (!startScreen.hidden || !endScreen.hidden)) start();
     if (e.code === "KeyP" || e.code === "Escape") togglePause();
   });
+  // Which button a pointer press last focused. :focus-visible cannot answer this from a
+  // keydown handler - Chrome promotes the focused element to it on that very key press.
+  let clickFocused = null;
+  document.addEventListener("pointerdown", (e) => {
+    clickFocused = e.target instanceof Element ? e.target.closest("button, a") : null;
+  }, true);
+  document.addEventListener("focusin", (e) => {
+    if (e.target !== clickFocused) clickFocused = null;   // focus moved by Tab or by code
+  }, true);
+
+  function keyboardFocused(el) {
+    return el instanceof Element && !!el.closest("button, a") && el !== clickFocused;
+  }
+
+  // An overlay notes what had focus when it opened, and hands focus back when it closes.
+  // Left alone, focus stays on one of its now-hidden buttons, where the next Enter presses
+  // a button nobody can see instead of starting the round.
+  function noteFocus() {
+    const el = document.activeElement;
+    return { el, clicked: el === clickFocused };
+  }
+
+  function restoreFocus(screen, opener) {
+    if (!screen.contains(document.activeElement)) return;
+    if (opener && opener.el && opener.el !== document.body && !screen.contains(opener.el)) {
+      opener.el.focus();
+      if (opener.clicked) clickFocused = opener.el;   // still a click's focus, not the keyboard's
+    }
+    if (screen.contains(document.activeElement)) document.activeElement.blur();   // opener gone or hidden
+  }
+
   window.addEventListener("keyup", (e) => {
     keys.delete(e.code);
     if (e.code === "Space" && game && pointers.size === 0) game.pouring = false;
@@ -1385,8 +1418,10 @@
 
   // Info panel. Opening it parks a live round, and the pause overlay stays out of the way
   // underneath so only one screen is visible at a time.
+  let infoOpener = null;
   function openInfo() {
     if (infoScreen.hidden === false) return;
+    infoOpener = noteFocus();
     setPaused(true);
     pauseScreen.hidden = true;
     armReset(false);
@@ -1407,6 +1442,7 @@
     armReset(false);
     infoScreen.hidden = true;
     infoScreen.scrollTop = 0;
+    restoreFocus(infoScreen, infoOpener);
     resize();
     setTimeout(resize, 150);
     setTimeout(resize, 450);
@@ -1528,8 +1564,10 @@
     }
   }
 
+  let shopOpener = null;
   function openShop() {
     if (!shopScreen.hidden) return;
+    shopOpener = noteFocus();
     renderShop();
     shopScreen.hidden = false;
   }
@@ -1538,6 +1576,7 @@
     if (shopScreen.hidden) return;
     shopScreen.hidden = true;
     shopScreen.scrollTop = 0;
+    restoreFocus(shopScreen, shopOpener);
     renderBank();
     resize();
   }
