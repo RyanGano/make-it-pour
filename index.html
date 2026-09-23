@@ -837,10 +837,11 @@
   canvas.addEventListener("pointercancel", releasePointer);
 
   window.addEventListener("keydown", (e) => {
-    // Focus only ever sits on a button because the keyboard put it there (a pointer click
-    // lets go of it, below), so a focused, visible button is one the player chose. Outside
-    // live play it gets Enter and Space to itself, or one press does two things: start a
-    // round and open the shop over it, or buy an upgrade and close the shop at once.
+    // A focused, visible button is one the player chose with the keyboard: the mouse never
+    // focuses one, screens under an overlay are inert, and a round's end clears what was
+    // focused during it (all below). Outside live play that button gets Enter and Space to
+    // itself, or one press does two things: start a round and open the shop over it, or
+    // buy an upgrade and close the shop at once.
     const playing = game && game.running && !game.paused;
     const onButton = (e.code === "Enter" || e.code === "Space") && isLiveButton(e.target);
     if (!playing && !e.repeat && onButton) return;
@@ -870,31 +871,49 @@
     if (e.code === "KeyP" || e.code === "Escape") togglePause();
   });
   function isLiveButton(el) {
-    return el instanceof Element && !!el.closest("button, a") && el.getClientRects().length > 0;
+    return el instanceof Element && !!el.closest("button") && el.getClientRects().length > 0;
   }
 
-  // A pointer click lets go of the button it pressed. Chrome and Edge would otherwise leave
-  // focus there, and Space on the end screen would press the mute button you last clicked
-  // instead of starting a round. Safari and Firefox on the Mac already behave this way.
-  document.addEventListener("click", (e) => {
-    const el = e.detail > 0 && e.target instanceof Element ? e.target.closest("button, a") : null;
-    if (el) el.blur();
+  // The mouse never focuses a button. Chrome and Edge focus one on mousedown - even when
+  // the press is dragged off or ends in a context menu and no click follows - and Space
+  // on the end screen would then press the mute button you last touched instead of
+  // starting a round. Safari and Firefox on the Mac already behave this way. Clicks, and
+  // the :active press style, are unaffected.
+  document.addEventListener("mousedown", (e) => {
+    if (e.target instanceof Element && e.target.closest("button")) e.preventDefault();
   }, true);
 
-  // Opening an overlay moves keyboard focus into it, off the buttons it now covers, and
-  // closing it hands focus back to whatever held it - once the screen underneath is
-  // visible again, since a hidden button cannot take focus. With no keyboard focus to
-  // begin with, there is nothing to move. Whether focus was inside has to be read before
-  // the overlay is hidden: Chrome lets go of focus in a hidden element straight away.
-  function enterOverlay(screen) {
-    const opener = document.activeElement;
-    if (!opener || opener === document.body) return null;
-    screen.focus({ preventScroll: true });
-    return opener;
+  // Only one layer takes input at a time. The info panel sits over everything and the
+  // shop over the start, end and pause screens; whatever an open overlay covers is made
+  // inert, so Tab cannot reach buttons nobody can see and Space cannot press them.
+  function updateInert() {
+    const top = !infoScreen.hidden ? infoScreen : !shopScreen.hidden ? shopScreen : null;
+    for (const el of [startScreen, endScreen, pauseScreen, shopScreen]) el.inert = !!top && el !== top;
   }
 
-  function leaveOverlay(screen, opener, hadFocus) {
+  // Overlays own their visibility and the focus that goes with it. Opening one moves
+  // keyboard focus into it, off the buttons it now covers; closing it hands focus back to
+  // whatever held it. Whether focus was inside has to be read before hiding, because
+  // Chrome lets go of focus in a hidden element on its own schedule, and the screen
+  // underneath has to be live again before a button on it can take focus back.
+  const openers = new Map();
+
+  function showOverlay(screen) {
+    const opener = document.activeElement;
+    screen.hidden = false;
+    updateInert();
+    const keyboard = opener && opener !== document.body;
+    openers.set(screen, keyboard ? opener : null);
+    if (keyboard) screen.focus({ preventScroll: true });
+  }
+
+  function hideOverlay(screen) {
+    const hadFocus = screen.contains(document.activeElement);
+    screen.hidden = true;
+    screen.scrollTop = 0;
+    updateInert();
     if (!hadFocus) return;
+    const opener = openers.get(screen);
     if (opener && isLiveButton(opener)) opener.focus({ preventScroll: true });
     else if (screen.contains(document.activeElement)) document.activeElement.blur();
   }
@@ -1448,14 +1467,12 @@
 
   // Info panel. Opening it parks a live round, and the pause overlay stays out of the way
   // underneath so only one screen is visible at a time.
-  let infoOpener = null;
   function openInfo() {
     if (infoScreen.hidden === false) return;
     setPaused(true);
     pauseScreen.hidden = true;
     armReset(false);
-    infoScreen.hidden = false;
-    infoOpener = enterOverlay(infoScreen);
+    showOverlay(infoScreen);
   }
 
   // Reset asks twice. The button is a few inches from the rules a new player is reading,
@@ -1470,11 +1487,8 @@
   function closeInfo() {
     if (infoScreen.hidden) return;
     armReset(false);
-    const hadFocus = infoScreen.contains(document.activeElement);
-    infoScreen.hidden = true;
-    infoScreen.scrollTop = 0;
-    if (game && game.running && game.paused) pauseScreen.hidden = false;
-    leaveOverlay(infoScreen, infoOpener, hadFocus);
+    if (game && game.running && game.paused) pauseScreen.hidden = false;   // before focus returns to it
+    hideOverlay(infoScreen);
     resize();
     setTimeout(resize, 150);
     setTimeout(resize, 450);
@@ -1489,15 +1503,16 @@
     pauseScreen.hidden = true;
     pauseBtn.hidden = false;
     renderPauseBtn(false);
-    // A Start or Pour Again pressed from the keyboard has just been hidden; let go of it.
-    const focused = document.activeElement;
-    if (startScreen.contains(focused) || endScreen.contains(focused)) focused.blur();
     game = newGame();
     clampWorld();
     last = performance.now();
   }
 
   function endGame() {
+    // Whatever the keyboard focused during the round - Pour Again from the last end screen,
+    // the mute button - is stale now. Left in place it would take the end screen's Space
+    // and Enter away from starting the next round.
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
     game.running = false;
     game.pouring = false;
     game.paused = false;
@@ -1608,20 +1623,15 @@
     }
   }
 
-  let shopOpener = null;
   function openShop() {
     if (!shopScreen.hidden) return;
     renderShop();
-    shopScreen.hidden = false;
-    shopOpener = enterOverlay(shopScreen);
+    showOverlay(shopScreen);
   }
 
   function closeShop() {
     if (shopScreen.hidden) return;
-    const hadFocus = shopScreen.contains(document.activeElement);
-    shopScreen.hidden = true;
-    shopScreen.scrollTop = 0;
-    leaveOverlay(shopScreen, shopOpener, hadFocus);
+    hideOverlay(shopScreen);
     renderBank();
     resize();
   }
