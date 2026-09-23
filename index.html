@@ -904,12 +904,18 @@
   // Space on the end screen would then press the mute button you last touched instead of
   // starting a round. Focus is let go when the press ends - mouseup reaches the window
   // even when the press was dragged off the button, and a right-click ends in a context
-  // menu instead - which is how Safari and Firefox on the Mac behave anyway. Cancelling
-  // mousedown would stop the focus at the source, but Firefox then drops the :active
-  // press style too.
+  // menu instead - which is how Safari and Firefox on the Mac behave anyway. Only the
+  // button the mouse pressed lets go: Shift+F10 or the Menu key raises a context menu on
+  // a button the keyboard chose, and that focus stays. Cancelling mousedown would stop the
+  // focus at the source, but Firefox then drops the :active press style too.
+  let mousePressed = null;
+  window.addEventListener("mousedown", (e) => {
+    mousePressed = e.target instanceof Element ? e.target.closest("button") : null;
+  }, true);
+
   function dropPointerFocus() {
-    const el = document.activeElement;
-    if (el instanceof Element && el.closest("button")) el.blur();
+    if (mousePressed && document.activeElement === mousePressed) mousePressed.blur();
+    mousePressed = null;
   }
   window.addEventListener("mouseup", dropPointerFocus, true);
   window.addEventListener("contextmenu", dropPointerFocus, true);
