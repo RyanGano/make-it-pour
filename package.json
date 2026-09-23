@@ -1,0 +1,11 @@
+{
+  "name": "make-it-pour",
+  "private": true,
+  "description": "Tests for Make it Pour. The game itself has no dependencies or build step.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

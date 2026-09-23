@@ -177,3 +177,28 @@ something other than the game (a host's maintenance page, say) is ignored and re
 next tick. The check is skipped when the page is opened over `file:`. Pointer Events unify
 mouse and multi-touch input, and the canvas is device-pixel-ratio aware, so it stays crisp on
 high-DPI phones.
+
+## Tests
+
+The game itself has no dependencies. The tests drive it in a real browser with
+[Playwright](https://playwright.dev), which is the only thing `package.json` installs:
+
+```sh
+npm install
+npx playwright install chromium   # once, to download the browser
+npm test
+```
+
+They serve `index.html` from a small local server (plus a copy with 1-second rounds, so a
+test can reach the end screen quickly) and use Playwright's fake clock to fast-forward play.
+
+- `tests/keyboard.spec.js` covers keyboard, mouse and focus: which of Enter and Space a
+  focused button answers, overlays taking and returning focus, held keys and the numpad's
+  Enter.
+- `tests/update-check.spec.js` points the deploy check at a server that plays each kind of
+  host (hung requests, dropped `ETag`s, maintenance pages, per-request bytes, real deploys).
+- `tests/gameplay.spec.js` covers bot-played rounds, saves and their compatibility, reset,
+  number formatting in other locales, Steady Hands on short screens, and surviving audio and
+  frame errors.
+
+Most of these cases were real bugs at some point; the tests keep them fixed.
