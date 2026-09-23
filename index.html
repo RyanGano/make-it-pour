@@ -1741,13 +1741,15 @@
     }
   }
 
-  // When both responses carry an ETag, trust it: the host is saying which deploy this is,
-  // and some hosts inject per-request bytes (a nonce, a bot-check token) into an unchanged
-  // page. When either lacks one - a CDN edge or proxy that strips it - compare the page
-  // itself instead of an ETag against nothing. Last-Modified is never used: re-uploading
-  // an identical file bumps it without a new version.
+  // The page's own bytes decide, with one exception: a matching ETag means unchanged even
+  // if the bytes differ, because some hosts inject per-request content (a nonce, a
+  // bot-check token) into an unchanged page. A differing ETag proves nothing - nginx and
+  // GitHub Pages build it from the file's mtime, which a redeploy of identical bytes
+  // bumps - and neither does a missing one. Last-Modified is never used, for the same
+  // mtime reason.
   function changed(a, b) {
-    return a.etag && b.etag ? a.etag !== b.etag : a.body !== b.body;
+    if (a.etag && b.etag && a.etag === b.etag) return false;
+    return a.body !== b.body;
   }
 
   async function check() {
