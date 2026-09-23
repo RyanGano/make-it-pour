@@ -1538,6 +1538,7 @@
       main.appendChild(pips);
 
       const buy = document.createElement("button");
+      buy.dataset.id = u.id;
       if (maxed) {
         buy.textContent = "Maxed";
         buy.disabled = true;
@@ -1554,7 +1555,18 @@
           owned[u.id] = n + 1;
           saveProgress();
           sound.bonus();
+          const hadFocus = document.activeElement === buy;
+          const wasClicked = clickFocused === buy;
           renderShop();
+          // The rebuild just threw away the focused button. Put focus back on the same
+          // upgrade (or on Back to the Bar once it can no longer be bought), or it falls to
+          // the page and the next Enter closes the shop instead of buying the next level.
+          if (hadFocus) {
+            const again = upList.querySelector('button[data-id="' + u.id + '"]');
+            const next = again && !again.disabled ? again : document.getElementById("shopCloseBtn");
+            next.focus();
+            if (wasClicked) clickFocused = next;   // still the mouse's focus, not the keyboard's
+          }
         });
       }
 
