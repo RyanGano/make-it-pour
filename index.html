@@ -786,6 +786,12 @@
   canvas.addEventListener("pointercancel", releasePointer);
 
   window.addEventListener("keydown", (e) => {
+    // A focused button answers Enter and Space with a click of its own. Outside live play
+    // let it have the key, or one press does two things: start a round and open the shop
+    // over it, or buy an upgrade and close the shop in the same breath.
+    const onButton = e.target instanceof Element && e.target.closest("button, a");
+    const playing = game && game.running && !game.paused;
+    if (onButton && !playing && (e.code === "Enter" || e.code === "Space")) return;
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].indexOf(e.code) >= 0) e.preventDefault();
     keys.add(e.code);
     sound.resume();
