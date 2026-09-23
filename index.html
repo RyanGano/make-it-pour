@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#070b18" />
-<meta name="description" content="Make it Pour - a fast, touch-friendly pouring game." />
+<meta name="description" content="Make it Pour — a fast, touch-friendly pouring game." />
 <title>Make it Pour</title>
 <style>
   :root {
@@ -1443,7 +1443,7 @@
       game.cupsFilled < 16 ? "Nice pour. Chase the golden cups for triple points." :
       "Bartender energy. Outstanding.";
     document.getElementById("endStatus").textContent =
-      rankedUp ? "You made " + rankName() + " - the back bar has new stock." :
+      rankedUp ? "You made " + rankName() + " — the back bar has new stock." :
       earned === 0 ? "No tips this round. Over pour a full cup to earn them." :
       earned === 1 ? "You pocketed a tip. Spend it on Upgrades." :
       "You pocketed " + earned + " tips. Spend them on Upgrades.";
@@ -1460,7 +1460,7 @@
     document.getElementById("rankNext").textContent = next
       ? "Score " + next.at.toLocaleString() + " in one round for " + next.name +
         " (best so far " + best.toLocaleString() + ")"
-      : "Top rank - the whole bar is open to you.";
+      : "Top rank — the whole bar is open to you.";
 
     upList.innerHTML = "";
     for (const u of UPGRADES) {
@@ -1478,7 +1478,7 @@
       title.textContent = u.name;
       const desc = document.createElement("p");
       desc.textContent = locked
-        ? "Locked until you make " + RANKS[u.rank - 1].name + " - a round worth " +
+        ? "Locked until you make " + RANKS[u.rank - 1].name + " — a round worth " +
           RANKS[u.rank - 1].at.toLocaleString() + " points."
         : u.desc + (n > 0 ? " Now: " + u.effect(n) + "." : "");
       const pips = document.createElement("div");
@@ -1570,7 +1570,7 @@
     if (!resetArmed) { armReset(true); return; }
     resetProgress();
     armReset(false);
-    resetNote.textContent = "Done - the bar is back to opening night.";
+    resetNote.textContent = "Done — the bar is back to opening night.";
   });
   infoScreen.addEventListener("click", (e) => {
     if (resetArmed && e.target !== resetBtn) armReset(false);   // any other tap backs out
