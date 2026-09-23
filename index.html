@@ -390,9 +390,11 @@
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const rand = (a, b) => a + Math.random() * (b - a);
-  // Every number the player reads - score, tips, prices, rank thresholds - goes through
-  // here, so a 20,000 in the shop is never a 20000 on the end screen.
-  const num = (n) => n.toLocaleString();
+  // Every number the player reads - score, tips, prices, ranks, seconds, rates - goes
+  // through here, so a 20,000 in the shop is never a 20000 on the end screen, and a player
+  // whose locale writes 1,5 or ۳ sees that everywhere, not in some places and not others.
+  const num = (n, digits = 0) =>
+    n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
   let W = 0, H = 0;
 
@@ -544,32 +546,32 @@
   const UPGRADES = [
     { id: "reach",   name: "Steady Hands",   rank: 1, costs: [110, 320, 780],
       desc: "Carry the bottle lower, so the stream has less air to cross.",
-      effect: (n) => "+" + Math.round(n * REACH_PER_LEVEL * 100) + "% reach" },
+      effect: (n) => "+" + num(n * REACH_PER_LEVEL * 100) + "% reach" },
     { id: "clock",   name: "Deep Pockets",   rank: 1, costs: [100, 290, 700],
       desc: "Start the round with a longer clock.",
-      effect: (n) => "+" + (n * 5) + "s to start" },
+      effect: (n) => "+" + num(n * 5) + "s to start" },
     { id: "tipsize", name: "Bigger Tips",    rank: 1, costs: [190, 520, 1200],
       desc: "Payouts climb higher, and the cup waits long enough for you to get there. Worth nothing unless you stay on it.",
-      effect: (n) => "tips climb to " + (TIP_TIERS + n) + " a payout" },
+      effect: (n) => "tips climb to " + num(TIP_TIERS + n) + " a payout" },
     { id: "pour",    name: "Wider Stream",   rank: 2, costs: [160, 450, 1050],
       desc: "More liquid per second out of the bottle.",
-      effect: (n) => "+" + (n * 7) + " drops/s" },
+      effect: (n) => "+" + num(n * 7) + " drops/s" },
     { id: "sip",     name: "Long Sip",       rank: 2, costs: [220, 650],
       desc: "A full cup pays the clock more, and keeps paying for longer, while you hold on it.",
-      effect: (n) => "+" + (n * 0.6).toFixed(1) + "s of over pour, +" + (n * 25) + "% clock" },
+      effect: (n) => "+" + num(n * 0.6, 1) + "s of over pour, +" + num(n * 25) + "% clock" },
     { id: "mult",    name: "Top Shelf",      rank: 3, costs: [150, 380, 880, 1900],
       desc: "Every cup you finish is worth more points.",
-      effect: (n) => "+" + (n * 20) + "% score" },
+      effect: (n) => "+" + num(n * 20) + "% score" },
     { id: "gold",    name: "Gold Rush",      rank: 3, costs: [150, 410, 980],
-      desc: "More cups come up golden. They score triple, tip " + GOLD_FILL_TIPS +
+      desc: "More cups come up golden. They score triple, tip " + num(GOLD_FILL_TIPS) +
             " for the fill alone, and pay double on an over pour.",
-      effect: (n) => "+" + (n * 5) + "% golden" },
+      effect: (n) => "+" + num(n * 5) + "% golden" },
     { id: "combo",   name: "Hot Streak",     rank: 4, costs: [150, 400, 900],
       desc: "The combo climbs higher and takes longer to cool off.",
-      effect: (n) => "x" + (9 + n) + " max, +" + (n * 0.7).toFixed(1) + "s" },
+      effect: (n) => "x" + num(9 + n) + " max, +" + num(n * 0.7, 1) + "s" },
     { id: "bubbles", name: "Bubble Trouble", rank: 5, costs: [250, 650, 1450],
       desc: "Bubbles drift across the bar. Pour through one to pop it for time and points.",
-      effect: (n) => "one every " + BUBBLE_SPAWN[n] + "s" }
+      effect: (n) => "one every " + num(BUBBLE_SPAWN[n]) + "s" }
   ];
 
   let tips = 0;
@@ -680,7 +682,7 @@
   function renderBank() {
     document.getElementById("finalBest").textContent = num(best);
     document.getElementById("finalTips").textContent = num(tips);
-    document.getElementById("finalRank").textContent = rank();
+    document.getElementById("finalRank").textContent = num(rank());
     shopBtn.textContent = tips > 0 ? "Upgrades · " + num(tips) : "Upgrades";
   }
 
@@ -1063,7 +1065,7 @@
     c.pop = 0.35;
     splash(c.x, floorY() - c.h, c.color, c.golden ? 40 : 22, 220);
     popText(c.x, floorY() - c.h - 20, "+" + num(gain), c.color);
-    if (c.golden) popText(c.x, floorY() - c.h - 46, "+" + GOLD_FILL_TIPS + " tips", "#ffd25a");
+    if (c.golden) popText(c.x, floorY() - c.h - 46, "+" + num(GOLD_FILL_TIPS) + " tips", "#ffd25a");
     if (c.golden) sound.bonus(); else sound.fill();
   }
 
@@ -1084,7 +1086,7 @@
     const top = floorY() - c.h;
     const addTime = overfillPay() * (c.golden ? GOLDEN_TIME_MULT : 1);
     g.time += addTime;
-    popText(c.x, top - 72, "+" + Math.round(addTime * 100) / 100 + "s", "#46e3ff");
+    popText(c.x, top - 72, "+" + num(addTime, 2) + "s", "#46e3ff");
     sound.bonus();
 
     // Still inside the free window - the clock paid, nothing was charged, nothing earned.
@@ -1093,11 +1095,11 @@
     c.overfillPayouts++;
     const addTips = Math.min(c.overfillPayouts, tipCap()) * (c.golden ? 2 : 1);
     g.tipsEarned += addTips;
-    popText(c.x, top - 46, "+" + addTips + (addTips === 1 ? " tip" : " tips"), "#ffd25a");
+    popText(c.x, top - 46, "+" + num(addTips) + (addTips === 1 ? " tip" : " tips"), "#ffd25a");
 
     if (g.combo > 1) {
       g.combo -= 1;
-      popText(c.x, top - 20, "combo -1", "#ff6b8b");
+      popText(c.x, top - 20, "combo " + num(-1), "#ff6b8b");
     }
   }
 
@@ -1143,7 +1145,7 @@
     g.score += gain;
     g.time += BUBBLE_TIME;
     splash(b.x, b.y, "#b7f5ff", 18, 170);
-    popText(b.x, b.y - 8, "+" + BUBBLE_TIME + "s", "#b7f5ff");
+    popText(b.x, b.y - 8, "+" + num(BUBBLE_TIME, 1) + "s", "#b7f5ff");
     popText(b.x, b.y - 34, "+" + num(gain), "#b7f5ff");
     sound.bonus();
   }
@@ -1354,19 +1356,19 @@
     ctx.textAlign = "center";
     ctx.fillStyle = "#8fa6cc";
     ctx.font = "600 11px system-ui, sans-serif";
-    ctx.fillText(Math.ceil(g.time) + "s", W / 2, barY + 26);
+    ctx.fillText(num(Math.ceil(g.time)) + "s", W / 2, barY + 26);
 
     const rate = drainRate();
     if (rate > 1) {
       ctx.fillStyle = rate >= 1.15 ? "#ff6b8b" : "#ffd25a";
       ctx.font = "700 11px system-ui, sans-serif";
-      ctx.fillText("-" + rate.toFixed(2) + "x", W / 2, barY + 42);
+      ctx.fillText("-" + num(rate, 2) + "x", W / 2, barY + 42);
     }
 
     if (g.combo > 1) {
       ctx.fillStyle = "#ffd25a";
       ctx.font = "800 20px system-ui, sans-serif";
-      ctx.fillText("x" + g.combo + " COMBO", W / 2, H - 18);
+      ctx.fillText("x" + num(g.combo) + " COMBO", W / 2, H - 18);
     }
   }
 
@@ -1499,7 +1501,7 @@
       rankedUp ? "You made " + rankName() + " — the back bar has new stock." :
       earned === 0 ? "No tips this round. Over pour a full cup to earn them." :
       earned === 1 ? "You pocketed a tip. Spend it on Upgrades." :
-      "You pocketed " + earned + " tips. Spend them on Upgrades.";
+      "You pocketed " + num(earned) + " tips. Spend them on Upgrades.";
     endScreen.hidden = false;
   }
 
@@ -1509,7 +1511,7 @@
     const next = nextRank();
     document.getElementById("tipsCount").textContent = num(tips);
     document.getElementById("rankName").textContent = rankName();
-    document.getElementById("rankNum").textContent = "Rank " + r;
+    document.getElementById("rankNum").textContent = "Rank " + num(r);
     document.getElementById("rankNext").textContent = next
       ? "Score " + num(next.at) + " in one round for " + next.name +
         " (best so far " + num(best) + ")"
@@ -1551,7 +1553,7 @@
         buy.textContent = "Maxed";
         buy.disabled = true;
       } else if (locked) {
-        buy.textContent = "Rank " + u.rank;
+        buy.textContent = "Rank " + num(u.rank);
         buy.disabled = true;
       } else {
         buy.textContent = num(cost) + (cost === 1 ? " tip" : " tips");
@@ -1604,7 +1606,7 @@
   function shareText() {
     const cups = game.cupsFilled;
     return "I scored " + num(game.score) + " in Make it Pour" +
-      " (" + cups + (cups === 1 ? " cup" : " cups") + " filled). Can you beat it?";
+      " (" + num(cups) + (cups === 1 ? " cup" : " cups") + " filled). Can you beat it?";
   }
 
   async function shareScore() {
