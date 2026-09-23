@@ -201,4 +201,6 @@ test can reach the end screen quickly) and use Playwright's fake clock to fast-f
   number formatting in other locales, Steady Hands on short screens, and surviving audio and
   frame errors.
 
-Most of these cases were real bugs at some point; the tests keep them fixed.
+Most of these cases were real bugs at some point; the tests keep them fixed. GitHub Actions
+runs them on every push to `main` and on every pull request (`.github/workflows/test.yml`),
+and keeps the failure traces from a red run for a week.
