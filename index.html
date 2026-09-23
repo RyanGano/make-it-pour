@@ -858,13 +858,16 @@
     // itself, or one press does two things: start a round and open the shop over it, or
     // buy an upgrade and close the shop at once.
     const playing = game && game.running && !game.paused;
-    const onButton = (e.code === "Enter" || e.code === "Space") && isLiveButton(e.target);
+    const isEnter = e.key === "Enter";   // e.key, so the numpad's Enter is the same key
+    const onButton = (isEnter || e.code === "Space") && isLiveButton(e.target);
     if (!playing && !e.repeat && onButton) return;
     // Enter has no job during play, so there it still presses a focused control (mute,
     // pause, the update notice). Anywhere else the game owns it - including when focus is
-    // stranded on a button that has since been hidden, which must never be pressed.
+    // stranded on a button that has since been hidden, which must never be pressed. A held
+    // Enter presses a button once: its repeats would otherwise confirm Reset Everything
+    // or buy every level of an upgrade from a single press.
     const gameKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"];
-    if (gameKeys.indexOf(e.code) >= 0 || (e.code === "Enter" && !(playing && onButton))) e.preventDefault();
+    if (gameKeys.indexOf(e.code) >= 0 || (isEnter && (e.repeat || !(playing && onButton)))) e.preventDefault();
     keys.add(e.code);
     sound.resume();
     if (e.code === "Space" && playing) game.pouring = true;
@@ -873,16 +876,16 @@
     // before the score was on screen, and a held P would flicker the pause on and off.
     if (e.repeat) return;
     if (!infoScreen.hidden) {
-      if (e.code === "Escape" || e.code === "KeyI" || e.code === "Enter" || e.code === "Space") closeInfo();
+      if (e.code === "Escape" || e.code === "KeyI" || isEnter || e.code === "Space") closeInfo();
       return;
     }
     if (!shopScreen.hidden) {
-      if (e.code === "Escape" || e.code === "KeyU" || e.code === "Enter") closeShop();
+      if (e.code === "Escape" || e.code === "KeyU" || isEnter) closeShop();
       return;
     }
     if (e.code === "KeyI") { openInfo(); return; }
     if (e.code === "KeyU" && !endScreen.hidden) { openShop(); return; }
-    if ((e.code === "Enter" || e.code === "Space") && (!startScreen.hidden || !endScreen.hidden)) start();
+    if ((isEnter || e.code === "Space") && (!startScreen.hidden || !endScreen.hidden)) start();
     if (e.code === "KeyP" || e.code === "Escape") togglePause();
   });
   function isLiveButton(el) {
