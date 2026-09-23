@@ -558,7 +558,7 @@
   ];
 
   let tips = 0;
-  let peakScore = 0;          // the best single round this session - it sets the rank
+  let best = 0;               // the best single round ever played here - it sets the rank
   const owned = Object.create(null);
   const lvl = (id) => owned[id] || 0;
 
@@ -569,7 +569,7 @@
     for (let i = 0; i < RANKS.length; i++) if (score >= RANKS[i].at) r = i + 1;
     return r;
   }
-  const rank = () => rankOf(peakScore);
+  const rank = () => rankOf(best);
   const rankName = () => RANKS[rank() - 1].name;
   const nextRank = () => RANKS[rank()];   // undefined once you are at the top
 
@@ -594,7 +594,6 @@
 
   let game = null;
   let last = 0;
-  let best = 0;
 
   // ------------------------------------------------------------- the saved bar
   // A round is long enough now that losing a night's tips to a stray refresh is a real
@@ -609,7 +608,9 @@
   const SAVE_VERSION = 2;
   const LEGACY_BEST_KEY = "makeItPourBest";   // pre-rewrite bests, deliberately dropped
 
-  function intOr(v) {
+  // A count read back from storage: a whole number, and anything else - missing, negative,
+  // a string someone typed into devtools - is zero.
+  function wholeNumber(v) {
     const n = Math.floor(Number(v));
     return Number.isFinite(n) && n > 0 ? n : 0;
   }
@@ -621,13 +622,14 @@
       if (!raw) return;
       const data = JSON.parse(raw);
       if (!data || data.v !== SAVE_VERSION) return;
-      best = intOr(data.best);
-      tips = intOr(data.tips);
-      peakScore = intOr(data.peakScore);
+      // Saves before this build also kept a peakScore beside best. The two were always
+      // updated together, so take whichever is higher rather than lose a rank.
+      best = Math.max(wholeNumber(data.best), wholeNumber(data.peakScore));
+      tips = wholeNumber(data.tips);
       // Only ids the shop still stocks, and never past the levels it sells, so an old or
       // hand-edited save cannot hand out an upgrade that no longer exists.
       for (const u of UPGRADES) {
-        const n = intOr(data.owned && data.owned[u.id]);
+        const n = wholeNumber(data.owned && data.owned[u.id]);
         if (n > 0) owned[u.id] = Math.min(n, u.costs.length);
       }
     } catch (e) {
@@ -638,7 +640,7 @@
   function saveProgress() {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: SAVE_VERSION, best: best, tips: tips, peakScore: peakScore, owned: owned
+        v: SAVE_VERSION, best: best, tips: tips, owned: owned
       }));
     } catch (e) {
       // Storage full or blocked - the session still plays, it just will not survive a reload.
@@ -650,7 +652,6 @@
   function resetProgress() {
     best = 0;
     tips = 0;
-    peakScore = 0;
     for (const k of Object.keys(owned)) delete owned[k];
     if (game) game.tipsEarned = 0;   // nothing from this round survives it either
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
@@ -1420,13 +1421,12 @@
     pauseScreen.hidden = true;
     pauseBtn.hidden = true;
     sound.over();
-    const isBest = game.score > best;
-    if (isBest) best = game.score;
     const earned = game.tipsEarned;
     tips += earned;
     game.tipsEarned = 0;
     const wasRank = rank();
-    if (game.score > peakScore) peakScore = game.score;
+    const isBest = game.score > best;
+    if (isBest) best = game.score;
     const rankedUp = rank() > wasRank;
     saveProgress();   // best, tips and rank all just moved
     renderBank();
@@ -1455,7 +1455,7 @@
     document.getElementById("rankNum").textContent = "Rank " + r;
     document.getElementById("rankNext").textContent = next
       ? "Score " + next.at.toLocaleString() + " in one round for " + next.name +
-        " (best so far " + peakScore.toLocaleString() + ")"
+        " (best so far " + best.toLocaleString() + ")"
       : "Top rank - the whole bar is open to you.";
 
     upList.innerHTML = "";
