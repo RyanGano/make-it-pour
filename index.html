@@ -390,6 +390,9 @@
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const rand = (a, b) => a + Math.random() * (b - a);
+  // Every number the player reads - score, tips, prices, rank thresholds - goes through
+  // here, so a 20,000 in the shop is never a 20000 on the end screen.
+  const num = (n) => n.toLocaleString();
 
   let W = 0, H = 0;
 
@@ -663,10 +666,10 @@
   // that moves it - a round ending, a purchase, a reset - refreshes them together, so the
   // Tips stat can never disagree with the count on the button next to it.
   function renderBank() {
-    document.getElementById("finalBest").textContent = best;
-    document.getElementById("finalTips").textContent = tips;
+    document.getElementById("finalBest").textContent = num(best);
+    document.getElementById("finalTips").textContent = num(tips);
     document.getElementById("finalRank").textContent = rank();
-    shopBtn.textContent = tips > 0 ? "Upgrades · " + tips : "Upgrades";
+    shopBtn.textContent = tips > 0 ? "Upgrades · " + num(tips) : "Upgrades";
   }
 
   loadProgress();
@@ -1014,7 +1017,7 @@
     g.shake = c.golden ? 0.7 : 0.35;
     c.pop = 0.35;
     splash(c.x, floorY() - c.h, c.color, c.golden ? 40 : 22, 220);
-    popText(c.x, floorY() - c.h - 20, "+" + gain, c.color);
+    popText(c.x, floorY() - c.h - 20, "+" + num(gain), c.color);
     if (c.golden) popText(c.x, floorY() - c.h - 46, "+" + GOLD_FILL_TIPS + " tips", "#ffd25a");
     if (c.golden) sound.bonus(); else sound.fill();
   }
@@ -1096,7 +1099,7 @@
     g.time += BUBBLE_TIME;
     splash(b.x, b.y, "#b7f5ff", 18, 170);
     popText(b.x, b.y - 8, "+" + BUBBLE_TIME + "s", "#b7f5ff");
-    popText(b.x, b.y - 34, "+" + gain, "#b7f5ff");
+    popText(b.x, b.y - 34, "+" + num(gain), "#b7f5ff");
     sound.bonus();
   }
 
@@ -1282,7 +1285,7 @@
     ctx.textAlign = "left";
     ctx.fillStyle = "#eaf2ff";
     ctx.font = "800 30px system-ui, sans-serif";
-    ctx.fillText(String(g.score), pad, top + 24);
+    ctx.fillText(num(g.score), pad, top + 24);
     ctx.font = "600 11px system-ui, sans-serif";
     ctx.fillStyle = "#8fa6cc";
     ctx.fillText("SCORE", pad, top + 40);
@@ -1290,7 +1293,7 @@
       ctx.fillStyle = "#ffd25a";
       ctx.font = "700 12px system-ui, sans-serif";
       const banked = tips + g.tipsEarned;
-      ctx.fillText(banked + (banked === 1 ? " TIP" : " TIPS"), pad, top + 58);
+      ctx.fillText(num(banked) + (banked === 1 ? " TIP" : " TIPS"), pad, top + 58);
     }
 
     const barW = Math.min(280, W * 0.4);
@@ -1434,8 +1437,8 @@
     const rankedUp = rank() > wasRank;
     saveProgress();   // best, tips and rank all just moved
     renderBank();
-    document.getElementById("finalScore").textContent = game.score;
-    document.getElementById("finalCups").textContent = game.cupsFilled;
+    document.getElementById("finalScore").textContent = num(game.score);
+    document.getElementById("finalCups").textContent = num(game.cupsFilled);
     document.getElementById("endTitle").textContent = isBest && game.score > 0 ? "New Best!" : "Time is Up!";
     document.getElementById("endNote").textContent =
       game.cupsFilled === 0 ? "Not a drop landed. Aim for the cups!" :
@@ -1454,12 +1457,12 @@
   function renderShop() {
     const r = rank();
     const next = nextRank();
-    document.getElementById("tipsCount").textContent = tips;
+    document.getElementById("tipsCount").textContent = num(tips);
     document.getElementById("rankName").textContent = rankName();
     document.getElementById("rankNum").textContent = "Rank " + r;
     document.getElementById("rankNext").textContent = next
-      ? "Score " + next.at.toLocaleString() + " in one round for " + next.name +
-        " (best so far " + best.toLocaleString() + ")"
+      ? "Score " + num(next.at) + " in one round for " + next.name +
+        " (best so far " + num(best) + ")"
       : "Top rank — the whole bar is open to you.";
 
     upList.innerHTML = "";
@@ -1479,7 +1482,7 @@
       const desc = document.createElement("p");
       desc.textContent = locked
         ? "Locked until you make " + RANKS[u.rank - 1].name + " — a round worth " +
-          RANKS[u.rank - 1].at.toLocaleString() + " points."
+          num(RANKS[u.rank - 1].at) + " points."
         : u.desc + (n > 0 ? " Now: " + u.effect(n) + "." : "");
       const pips = document.createElement("div");
       pips.className = "pips";
@@ -1500,7 +1503,7 @@
         buy.textContent = "Rank " + u.rank;
         buy.disabled = true;
       } else {
-        buy.textContent = cost + (cost === 1 ? " tip" : " tips");
+        buy.textContent = num(cost) + (cost === 1 ? " tip" : " tips");
         buy.disabled = tips < cost;
         buy.title = "Next: " + u.effect(n + 1);
         buy.addEventListener("click", () => {
@@ -1535,7 +1538,7 @@
 
   function shareText() {
     const cups = game.cupsFilled;
-    return "I scored " + game.score.toLocaleString() + " in Make it Pour" +
+    return "I scored " + num(game.score) + " in Make it Pour" +
       " (" + cups + (cups === 1 ? " cup" : " cups") + " filled). Can you beat it?";
   }
 
