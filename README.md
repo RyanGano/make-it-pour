@@ -134,17 +134,18 @@ the message itself — your messaging app does.
 The game collects nothing and sends nothing anywhere: no accounts, no analytics, no trackers,
 no ads, no server that sees you play. Your bar — tips, upgrades, rank and best score — is
 written to `localStorage` in your own browser and never leaves the device. Clearing your
-browser data erases it, and so does *Reset Everything* in the ℹ panel. The Share button only hands text to your own device's
-share sheet or clipboard when you press it — nothing is transmitted by the game. The only network request is the page re-fetching itself
-once a minute to notice a new deploy, and it carries no information about you.
+browser data erases it, and so does *Reset Everything* in the ℹ panel. The Share button only
+hands text to your own device's share sheet or clipboard when you press it — nothing is
+transmitted by the game. The only network request is the page re-fetching itself once a
+minute to notice a new deploy, and it carries no information about you.
 
 ## How to score
 
 - Every drop that lands in a cup fills it; a cup that hits 100% pays out and is replaced.
 - Filling a cup raises your **combo** (up to x9) and multiplies the payout. Go too long
   without a fill and the combo ticks back down.
-- **Golden cups** are worth 3x, add double the time, and are the only cup that tips you for
-  simply finishing it.
+- **Golden cups** are worth 3x, pay double clock and double tips when over poured, and are the
+  only cup that tips you for simply finishing it.
 - Filling a cup only ever scores. The clock — and every tip you will ever spend — comes back
   from **over pouring**: keep the stream on a cup after it is full and it pays every third of
   a second, for up to two seconds, before the cup is spent. See
