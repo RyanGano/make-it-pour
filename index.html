@@ -927,8 +927,8 @@
 
   function hideOverlay(screen) {
     const hadFocus = screen.contains(document.activeElement);
+    screen.scrollTop = 0;   // while it still has a box - a hidden element ignores this
     screen.hidden = true;
-    screen.scrollTop = 0;
     updateInert();
     if (!hadFocus) return;
     const opener = openers.get(screen);
