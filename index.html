@@ -301,8 +301,8 @@
     </ul>
     <h3>Filling pays points</h3>
     <ul>
-      <li>Each filled cup is <strong>100 points</strong>, and a <strong>golden cup is 300</strong>.</li>
-      <li>Fills in quick succession build a <strong>combo multiplier</strong> up to x9, and the
+      <li>Each filled cup is <strong><span data-rule="cupScore">100</span> points</strong>, and a <strong>golden cup is <span data-rule="goldenScore">300</span></strong>.</li>
+      <li>Fills in quick succession build a <strong>combo multiplier</strong> up to x<span data-rule="comboCap">9</span>, and the
         combo is what makes a score big.</li>
       <li>Cups slide faster as the round goes on and as you fill more &mdash; a hot streak buys
         time and outruns you at once.</li>
@@ -313,15 +313,15 @@
         third of a second. The first <strong>half second is free</strong> &mdash; drops still in
         the air are not your fault &mdash; and it only pays the clock.</li>
       <li>Stay past that and every payout hands you <strong>tips</strong> &mdash; climbing one
-        at a time, up to <strong>2</strong> a payout until <em>Bigger Tips</em> raises the cap
+        at a time, up to <strong data-rule="tipTiers">2</strong> a payout until <em>Bigger Tips</em> raises the cap
         &mdash; and <strong>knocks a point off your combo</strong> each time.</li>
       <li>So every full cup is a choice: <strong>move on for the score, or lean on it for the
         money</strong>. You cannot have both from the same cup.</li>
-      <li>The exception: a <strong>golden cup tips you 8 just for finishing it</strong>.</li>
+      <li>The exception: a <strong>golden cup tips you <span data-rule="goldFillTips">8</span> just for finishing it</strong>.</li>
     </ul>
     <h3>The Clock</h3>
     <ul>
-      <li>A round starts at <strong>60 seconds</strong>. Over pouring is the only thing that
+      <li>A round starts at <strong><span data-rule="roundTime">60</span> seconds</strong>. Over pouring is the only thing that
         gives time back, so you cannot ignore it completely.</li>
       <li>Every <strong>unfilled cup on screen drains the clock faster</strong> &mdash; the rate
         under the timer shows how much.</li>
@@ -515,6 +515,9 @@
 
   // ------------------------------------------------------------- state
   const ROUND_TIME = 60;
+  const CUP_SCORE = 100;           // points for filling a cup, before the combo and Top Shelf
+  const GOLDEN_SCORE_MULT = 3;     // a golden cup scores this many cups' worth
+  const COMBO_CAP = 9;             // the combo tops out here until Hot Streak raises it
   const GRAVITY = 1500;
   const SPOUT_DX = 26;         // how far the spout sits from the bottle's centre
   const POUR_RATE = 34;
@@ -584,7 +587,7 @@
       effect: (n) => "+" + num(n * 5) + "% golden" },
     { id: "combo",   name: "Hot Streak",     rank: 4, costs: [150, 400, 900],
       desc: "The combo climbs higher and takes longer to cool off.",
-      effect: (n) => "x" + num(9 + n) + " max, +" + num(n * 0.7, 1) + "s" },
+      effect: (n) => "x" + num(COMBO_CAP + n) + " max, +" + num(n * 0.7, 1) + "s" },
     { id: "bubbles", name: "Bubble Trouble", rank: 5, costs: [250, 650, 1450],
       desc: "Bubbles drift across the bar. Pour through one to pop it for time and points.",
       effect: (n) => "one every " + num(BUBBLE_SPAWN[n]) + "s" }
@@ -617,7 +620,7 @@
   const tipCap = () => TIP_TIERS + lvl("tipsize");
   const pourRate = () => POUR_RATE + lvl("pour") * 7;
   const goldChance = () => 0.12 + game.level * 0.01 + lvl("gold") * 0.05;
-  const maxCombo = () => 9 + lvl("combo");
+  const maxCombo = () => COMBO_CAP + lvl("combo");
   const comboWindow = () => COMBO_WINDOW + lvl("combo") * 0.7;
   const overfillWindow = () =>
     OVERFILL_WINDOW + lvl("sip") * 0.6 + lvl("tipsize") * OVERFILL_INTERVAL;
@@ -705,6 +708,18 @@
   }
 
   loadProgress();
+
+  // The rules in the info panel quote the game's own numbers, so tuning a constant cannot
+  // leave them out of date, and they read in the player's locale like every other number.
+  const RULES = {
+    cupScore: CUP_SCORE,
+    goldenScore: CUP_SCORE * GOLDEN_SCORE_MULT,
+    comboCap: COMBO_CAP,
+    tipTiers: TIP_TIERS,
+    goldFillTips: GOLD_FILL_TIPS,
+    roundTime: ROUND_TIME
+  };
+  for (const el of document.querySelectorAll("[data-rule]")) el.textContent = num(RULES[el.dataset.rule]);
 
   function floorY() { return H - Math.max(70, H * 0.10); }
 
@@ -1101,7 +1116,7 @@
 
   function fillCup(c) {
     const g = game;
-    const gain = Math.round((c.golden ? 300 : 100) * g.combo * scoreMult());
+    const gain = Math.round(CUP_SCORE * (c.golden ? GOLDEN_SCORE_MULT : 1) * g.combo * scoreMult());
     g.score += gain;
     g.cupsFilled++;
     // The single exception to "filling pays score, over pouring pays tips": a golden cup
