@@ -23,8 +23,9 @@ finished work to land on `main` without waiting on them, so:
 2. Open a pull request into `main` and watch its checks.
 3. If `playwright` fails, read the job log, fix the cause, and push to the same branch.
    Repeat until it is green.
-4. Once it is green and mergeable, merge it with a **merge commit** (not squash), so each
-   commit's message survives in `main`'s history. Then say it has been merged.
+4. Once it is green and mergeable, merge it with **rebase** (or squash). Never use a merge
+   commit. Rebase is preferred because each commit's message survives in `main`'s history.
+   Then say it has been merged.
 
 ## Commits
 
