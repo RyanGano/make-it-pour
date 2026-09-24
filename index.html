@@ -115,10 +115,15 @@
     border-radius: 12px;
   }
   #controls button[hidden] { display: none; }
-  #infoScreen {
+  /* Both panels scroll, start below the corner buttons and hide what is underneath. */
+  #infoScreen, #shopScreen {
     justify-content: flex-start;
     overflow-y: auto;
     overscroll-behavior: contain;
+    padding-top: max(66px, calc(env(safe-area-inset-top) + 54px));
+    background: radial-gradient(120% 90% at 50% 20%, rgba(13,22,46,.97), rgba(7,11,24,.99));
+  }
+  #infoScreen {
     z-index: 17;   /* above the shop: the (i) button stays clickable while it is open */
   }
   .panel {
@@ -157,14 +162,7 @@
   button.danger-btn:active { box-shadow: none; }
   #resetNote { min-height: 1.2em; font-size: 13px; color: var(--muted); }
   .panel button { align-self: center; margin-top: 4px; }
-  #shopScreen {
-    justify-content: flex-start;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-top: max(66px, calc(env(safe-area-inset-top) + 54px));
-    background: radial-gradient(120% 90% at 50% 20%, rgba(13,22,46,.97), rgba(7,11,24,.99));
-    z-index: 16;
-  }
+  #shopScreen { z-index: 16; }
   .tips-bar {
     display: flex;
     align-items: baseline;

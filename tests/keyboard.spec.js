@@ -339,6 +339,15 @@ test.describe("overlays", () => {
     expect(await page.evaluate(() => document.getElementById("infoScreen").scrollTop)).toBe(0);
   });
 
+  test("on a phone the info panel's heading starts below the corner buttons", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 780 });
+    await open(page);
+    await page.click("#info");
+    const heading = await page.locator("#infoScreen h2").boundingBox();
+    const controls = await page.locator("#controls").boundingBox();
+    expect(heading.y).toBeGreaterThanOrEqual(controls.y + controls.height);
+  });
+
   test("the info panel opens above the shop", async ({ page }) => {
     await open(page, { short: true });
     await page.keyboard.press("Enter");
