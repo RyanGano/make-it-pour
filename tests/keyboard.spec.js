@@ -158,7 +158,7 @@ test.describe("keyboard-chosen buttons", () => {
     }
   });
 
-  test("Tab in the info panel never reaches Play", async ({ page }) => {
+  test("Tab in the info panel never reaches Start Pouring", async ({ page }) => {
     await open(page);
     await page.click("#info");
     for (let i = 0; i < 6; i++) {
