@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#070b18" />
-<meta name="description" content="Make it Pour — a fast, touch-friendly pouring game." />
+<meta name="description" content="Make it Pour: an arcade game about pouring drinks into moving cups before the clock runs out." />
 <title>Make it Pour</title>
 <style>
   :root {
@@ -144,8 +144,8 @@
   .panel p, .panel li { color: var(--muted); font-size: clamp(13px, 3.6vw, 16px); line-height: 1.55; max-width: none; }
   .panel ul { display: flex; flex-direction: column; gap: 8px; padding-left: 20px; }
   .panel strong { color: var(--ink); }
-  .panel .privacy { border-top: 1px solid rgba(255,255,255,.1); padding-top: 14px; }
-  .panel .danger { border-top: 1px solid rgba(255,255,255,.1); padding-top: 14px; }
+  .panel .privacy, .panel .danger { border-top: 1px solid rgba(255,255,255,.1); padding-top: 14px; }
+  .panel p.center { text-align: center; }
   button.danger-btn {
     color: #ffb1b1;
     background: rgba(255,90,90,.12);
@@ -267,14 +267,14 @@
 <div class="overlay" id="startScreen">
   <h1>Make it Pour</h1>
   <p>Drag the bottle, hold to pour. Fill every cup before the clock runs dry.</p>
-  <button id="startBtn">Start Pouring</button>
+  <button id="startBtn">Play</button>
   <p class="hint">Touch &amp; drag on mobile &middot; mouse or <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>space</kbd> on desktop</p>
-  <p class="hint">Tap the <b>&#8505;</b> any time for the rules and the privacy note</p>
+  <p class="hint">Tap <b>&#8505;</b> for the full rules</p>
 </div>
 
 <div class="overlay" id="pauseScreen" hidden>
   <h2>Paused</h2>
-  <p>The clock is on hold. Catch your breath.</p>
+  <p>The clock is stopped.</p>
   <button id="resumeBtn">Resume</button>
   <p class="hint"><kbd>P</kbd> or <kbd>esc</kbd> to toggle pause</p>
 </div>
@@ -288,7 +288,7 @@
     <div class="stat"><b id="finalTips">0</b><span>Tips</span></div>
     <div class="stat"><b id="finalRank">1</b><span>Rank</span></div>
   </div>
-  <p id="endNote">Nice pour.</p>
+  <p id="endNote"></p>
   <div class="btn-row">
     <button id="againBtn">Pour Again</button>
     <button id="shopBtn" class="secondary">Upgrades</button>
@@ -300,71 +300,54 @@
 <div class="overlay" id="infoScreen" tabindex="-1" hidden>
   <div class="panel">
     <h2>How to Play</h2>
-    <p>Cups slide along the floor. Move the bottle over one, pour, and keep the stream on
-      target until the cup is full.</p>
+    <p>Cups slide along the floor. Move the bottle over one and pour until it is full.</p>
     <h3>Controls</h3>
     <ul>
-      <li><strong>Touch:</strong> drag anywhere &mdash; the bottle follows your finger and pours while you hold.</li>
+      <li><strong>Touch:</strong> drag anywhere. The bottle follows your finger and pours while you hold.</li>
       <li><strong>Mouse:</strong> move to aim, hold the button to pour.</li>
       <li><strong>Keyboard:</strong> <kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> to move, <kbd>space</kbd> to pour, <kbd>P</kbd> or <kbd>esc</kbd> to pause.</li>
     </ul>
-    <h3>Filling pays points</h3>
+    <h3>Filling cups scores points</h3>
     <ul>
-      <li>Each filled cup is <strong><span data-rule="cupScore">100</span> points</strong>, and a <strong>golden cup is <span data-rule="goldenScore">300</span></strong>.</li>
-      <li>Fills in quick succession build a <strong>combo multiplier</strong> up to x<span data-rule="comboCap">9</span>, and the
-        combo is what makes a score big.</li>
-      <li>Cups slide faster as the round goes on and as you fill more &mdash; a hot streak buys
-        time and outruns you at once.</li>
+      <li>A cup is worth <strong><span data-rule="cupScore">100</span> points</strong>. A <strong>golden cup is worth <span data-rule="goldenScore">300</span></strong>.</li>
+      <li>Filling cups in quick succession builds a <strong>combo multiplier</strong>, up to x<span data-rule="comboCap">9</span>.</li>
+      <li>Cups speed up as the round goes on and as you fill more of them.</li>
     </ul>
-    <h3>Over pouring pays tips</h3>
+    <h3>Over pouring earns tips</h3>
     <ul>
-      <li>Keep the stream on a cup that is <strong>already full</strong> and it pays every
-        third of a second. The first <strong>half second is free</strong> &mdash; drops still in
-        the air are not your fault &mdash; and it only pays the clock.</li>
-      <li>Stay past that and every payout hands you <strong>tips</strong> &mdash; climbing one
-        at a time, up to <strong data-rule="tipTiers">2</strong> a payout until <em>Bigger Tips</em> raises the cap
-        &mdash; and <strong>knocks a point off your combo</strong> each time.</li>
-      <li>So every full cup is a choice: <strong>move on for the score, or lean on it for the
-        money</strong>. You cannot have both from the same cup.</li>
-      <li>The exception: a <strong>golden cup tips you <span data-rule="goldFillTips">8</span> just for finishing it</strong>.</li>
+      <li>Keep pouring into a cup that is <strong>already full</strong> and it pays out every
+        third of a second. The <strong>first half second</strong> only adds time to the clock.</li>
+      <li>After that, each payout also gives <strong>tips</strong>: 1, then 2, up to
+        <strong data-rule="tipTiers">2</strong> per payout (<em>Bigger Tips</em> raises this).
+        Each payout also <strong>lowers your combo by 1</strong>.</li>
+      <li>A <strong>golden cup gives <span data-rule="goldFillTips">8</span> tips</strong> when you fill it.</li>
     </ul>
-    <h3>The Clock</h3>
+    <h3>The clock</h3>
     <ul>
-      <li>A round starts at <strong><span data-rule="roundTime">60</span> seconds</strong>. Over pouring is the only thing that
-        gives time back, so you cannot ignore it completely.</li>
-      <li>Every <strong>unfilled cup on screen drains the clock faster</strong> &mdash; the rate
-        under the timer shows how much.</li>
+      <li>A round starts at <strong><span data-rule="roundTime">60</span> seconds</strong>. Over pouring is the only way to add time.</li>
+      <li>Each <strong>unfilled cup on screen makes the clock run faster</strong>. The number under the timer shows how much faster.</li>
     </ul>
-    <h3>Tips, rank and the back bar</h3>
+    <h3>Tips, rank and upgrades</h3>
     <ul>
-      <li><strong>Tips are the money.</strong> The <strong>Upgrades</strong> button on the end
-        screen opens the back bar and spends them.</li>
-      <li><strong>Your best round's score is your rank</strong>, and rank decides what the bar
-        will sell you at all. Grind tips alone and you end up rich in front of a locked shelf;
-        chase score alone and you can afford nothing.</li>
-      <li>What you buy <strong>carries into every later round</strong>, and the bar is
-        <strong>saved in this browser</strong> &mdash; your tips, your stock, your rank and
-        your best score are all still there when you come back.</li>
-      <li><strong>Share</strong> sends your climb: the time spent pouring and the rounds it
-        took to stock every upgrade to the top, or how far along you are. Pauses, the shop and
-        time away do not count.</li>
+      <li>Spend tips on upgrades. Open the shop with the <strong>Upgrades</strong> button on the end screen.</li>
+      <li><strong>Your best score sets your rank</strong>, and higher ranks unlock more upgrades.</li>
+      <li>Upgrades apply to every later round. Tips, upgrades, rank and best score are saved in this browser.</li>
+      <li><strong>Share</strong> posts how long you have spent pouring and how many rounds you have played
+        toward buying every upgrade. Time paused, in the shop or away from the game is not counted.</li>
     </ul>
     <div class="danger">
-      <h3>Start Over</h3>
-      <p>Wipes the bar back to opening night: no tips, no stock, rank 1, no best score, and
-        starts a fresh timed climb. Only your fastest full bar is kept. There is no undo.</p>
+      <h3>Start over</h3>
+      <p>Deletes your tips, upgrades, rank and best score, and starts a new timed run. Your
+        fastest completed run is kept. This can't be undone.</p>
       <button id="resetBtn" class="danger-btn">Reset Everything</button>
       <p id="resetNote" role="status"></p>
     </div>
     <div class="privacy">
-      <h3>Your Privacy</h3>
-      <p>This game <strong>collects nothing and sends nothing anywhere</strong>. There are no
-        accounts, no analytics, no trackers, no ads, and no server that ever sees you play.
-        Your <strong>bar &mdash; tips, upgrades, rank and best score &mdash; is saved only
-        in this browser</strong>, on this device, and never leaves it. Clearing your browser
-        data erases it for good, and <em>Reset Everything</em> above does the same on
-        purpose. The page's one network request is re-fetching itself to notice when a new
-        version has been deployed; it carries no information about you.</p>
+      <h3>Privacy</h3>
+      <p>The game collects no data and has no accounts, analytics or ads. Your progress is
+        saved only in this browser. Clearing your browser data or using <em>Reset Everything</em>
+        deletes it. The page checks itself once a minute for a new version; that request
+        sends nothing about you.</p>
     </div>
     <button id="infoCloseBtn">Got It</button>
   </div>
@@ -372,26 +355,24 @@
 
 <div class="overlay" id="shopScreen" tabindex="-1" hidden>
   <div class="panel">
-    <h2>The Back Bar</h2>
-    <div class="tips-bar"><b id="tipsCount">0</b><span>tips to spend</span></div>
+    <h2>Upgrades</h2>
+    <div class="tips-bar"><b id="tipsCount">0</b><span>tips</span></div>
     <div class="rank-bar">
       <div><b id="rankName">Barback</b><span id="rankNum">Rank 1</span></div>
       <div class="rank-next" id="rankNext"></div>
     </div>
-    <p class="hint" id="runLine" style="text-align:center"></p>
-    <p style="text-align:center"><strong>Over pouring</strong> pays the tips that buy all of
-      this, and costs you a point of combo every time. <strong>Filling</strong> pays the score
-      that earns your rank, and rank is what the bar will sell you. What you buy stays with you
-      for every round, and this browser remembers it between visits.</p>
+    <p class="hint center" id="runLine"></p>
+    <p class="center">Over pour to earn tips. Score higher to rank up and unlock more upgrades.
+      Upgrades are permanent.</p>
     <button id="hideMaxedBtn" class="secondary" hidden></button>
     <div class="up-list" id="upList"></div>
-    <p class="hint" id="maxedNote" style="text-align:center"></p>
-    <button id="shopCloseBtn">Back to the Bar</button>
+    <p class="hint center" id="maxedNote"></p>
+    <button id="shopCloseBtn">Done</button>
   </div>
 </div>
 
 <div id="updateNotice" role="status" hidden>
-  <span>There's an update</span><button type="button" id="updateRefresh">refresh</button>
+  <span>A new version is available.</span><button type="button" id="updateRefresh">Reload</button>
 </div>
 
 <script>
@@ -604,13 +585,13 @@
       desc: "Start the round with a longer clock.",
       effect: (n) => "+" + num(n * 5) + "s to start" },
     { id: "tipsize", name: "Bigger Tips",    rank: 1, costs: [190, 520, 1200],
-      desc: "Payouts climb higher, and the cup waits long enough for you to get there. Worth nothing unless you stay on it.",
+      desc: "Over pour payouts give more tips, and full cups pay out for longer. Only helps if you over pour.",
       effect: (n) => "tips climb to " + num(TIP_TIERS + n) + " a payout" },
     { id: "pour",    name: "Wider Stream",   rank: 2, costs: [160, 450, 1050],
       desc: "More liquid per second out of the bottle.",
       effect: (n) => "+" + num(n * 7) + " drops/s" },
     { id: "sip",     name: "Long Sip",       rank: 2, costs: [220, 650],
-      desc: "A full cup pays the clock more, and keeps paying for longer, while you hold on it.",
+      desc: "Over pouring adds more time, and full cups pay out for longer.",
       effect: (n) => "+" + num(n * 0.6, 1) + "s of over pour, +" + num(n * 25) + "% clock" },
     { id: "mult",    name: "Top Shelf",      rank: 3, costs: [150, 380, 880, 1900],
       desc: "Every cup you finish is worth more points.",
@@ -623,7 +604,7 @@
       desc: "The combo climbs higher and takes longer to cool off.",
       effect: (n) => "x" + num(COMBO_CAP + n) + " max, +" + num(n * 0.7, 1) + "s" },
     { id: "bubbles", name: "Bubble Trouble", rank: 5, costs: [250, 650, 1450],
-      desc: "Bubbles drift across the bar. Pour through one to pop it for time and points.",
+      desc: "Bubbles float across the screen. Pour into one to pop it for time and points.",
       effect: (n) => "one every " + num(BUBBLE_SPAWN[n]) + "s" }
   ];
 
@@ -1543,7 +1524,7 @@
     if (rate > 1) {
       ctx.fillStyle = rate >= 1.15 ? "#ff6b8b" : "#ffd25a";
       ctx.font = "700 11px system-ui, sans-serif";
-      ctx.fillText("-" + num(rate, 2) + "x", W / 2, barY + 42);
+      ctx.fillText(num(rate, 2) + "x speed", W / 2, barY + 42);
     }
 
     if (g.combo > 1) {
@@ -1627,8 +1608,8 @@
   let resetArmed = false;
   function armReset(on) {
     resetArmed = on;
-    resetBtn.textContent = on ? "Tap again to wipe it" : "Reset Everything";
-    resetNote.textContent = on ? "This cannot be undone. Tap anything else to back out." : "";
+    resetBtn.textContent = on ? "Tap again to confirm" : "Reset Everything";
+    resetNote.textContent = on ? "This can't be undone. Tap anywhere else to cancel." : "";
   }
 
   function closeInfo() {
@@ -1683,15 +1664,14 @@
     document.getElementById("finalCups").textContent = num(game.cupsFilled);
     document.getElementById("endTitle").textContent = isBest && game.score > 0 ? "New Best!" : "Time is Up!";
     document.getElementById("endNote").textContent =
-      game.cupsFilled === 0 ? "Not a drop landed. Aim for the cups!" :
-      game.cupsFilled < 8 ? "Careful now. Keep the stream on target." :
-      game.cupsFilled < 16 ? "Nice pour. Chase the golden cups for triple points." :
-      "Bartender energy. Outstanding.";
+      game.cupsFilled === 0 ? "No cups filled. Hold to pour while the bottle is over a cup." :
+      game.cupsFilled < 16 ? "Golden cups score triple." :
+      "";
     document.getElementById("endStatus").textContent =
-      rankedUp ? "You made " + rankName() + " — the back bar has new stock." :
-      earned === 0 ? "No tips this round. Over pour a full cup to earn them." :
-      earned === 1 ? "You pocketed a tip. Spend it on Upgrades." :
-      "You pocketed " + num(earned) + " tips. Spend them on Upgrades.";
+      rankedUp ? "Rank up: " + rankName() + ". New upgrades unlocked." :
+      earned === 0 ? "No tips this round. Keep pouring into a full cup to earn them." :
+      earned === 1 ? "You earned 1 tip." :
+      "You earned " + num(earned) + " tips.";
     endScreen.hidden = false;
   }
 
@@ -1718,7 +1698,7 @@
     document.getElementById("rankNext").textContent = next
       ? "Score " + num(next.at) + " in one round for " + next.name +
         " (best so far " + num(best) + ")"
-      : "Top rank — the whole bar is open to you.";
+      : "Top rank. Every upgrade is unlocked.";
     document.getElementById("runLine").textContent = runSummary();
 
     // The toggle only shows once there is something to hide, and while it hides anything
@@ -1748,8 +1728,8 @@
       title.textContent = u.name;
       const desc = document.createElement("p");
       desc.textContent = locked
-        ? "Locked until you make " + RANKS[u.rank - 1].name + " — a round worth " +
-          num(RANKS[u.rank - 1].at) + " points."
+        ? "Unlocks at " + RANKS[u.rank - 1].name + ": score " +
+          num(RANKS[u.rank - 1].at) + " in one round."
         : u.desc + (n > 0 ? " Now: " + u.effect(n) + "." : "");
       const pips = document.createElement("div");
       pips.className = "pips";
@@ -1787,7 +1767,7 @@
           const hadFocus = document.activeElement === buy;   // pressed from the keyboard
           renderShop();
           // The rebuild just threw away the focused button. Put focus back on the same
-          // upgrade (or on Back to the Bar once it can no longer be bought), or it falls to
+          // upgrade (or on Done once it can no longer be bought), or it falls to
           // the page and the next Enter closes the shop instead of buying the next level.
           if (hadFocus) {
             const again = upList.querySelector('button[data-id="' + u.id + '"]');
@@ -1822,31 +1802,31 @@
 
   // Where the climb stands, for the shop.
   function runSummary() {
-    const rec = record ? " Fastest full bar: " + climbText(record) + "." : "";
+    const rec = record ? " Fastest run: " + climbText(record) + "." : "";
     if (!run.timed) {
-      return (run.done ? "Whole bar stocked." : levelsText() + " stocked.") +
-        " This bar was started before climbs were timed; Reset Everything starts a timed one." + rec;
+      return (run.done ? "Every upgrade bought." : levelsText() + " bought.") +
+        " This save is older than run timing. Reset Everything starts a timed run." + rec;
     }
-    if (run.done) return "Whole bar stocked in " + climbText(run) + "." + rec;
-    return "This climb: " + climbText(run) + ", " + levelsText() + " stocked." + rec;
+    if (run.done) return "Every upgrade bought in " + climbText(run) + "." + rec;
+    return "This run: " + climbText(run) + ", " + levelsText() + " bought." + rec;
   }
 
   // What gets shared is the climb, not the last round: the time and rounds it took to
   // stock the whole bar, or how far along it is, with the fastest finish to race.
   function shareText() {
-    const rec = record ? " My fastest full bar: " + climbText(record) + ". Can you beat it?" : " Can you keep up?";
+    const rec = record ? " My fastest run to every upgrade: " + climbText(record) + ". Can you beat it?" : "";
     if (!run.timed) {
       return run.done
-        ? "I stocked the whole bar in Make it Pour." + (record ? rec : " Can you?")
-        : "I've stocked " + levelsText() + " in Make it Pour." + rec;
+        ? "I bought every upgrade in Make it Pour." + rec
+        : "I've bought " + levelsText() + " in Make it Pour." + rec;
     }
     if (run.done) {
       const isRecord = record && record.time === run.time && record.rounds === run.rounds;
-      return "I stocked the whole bar in Make it Pour in " + climbText(run) + "." +
+      return "I bought every upgrade in Make it Pour in " + climbText(run) + "." +
         (isRecord ? " Can you beat it?" : rec);
     }
-    return "I'm " + roundsText(run.rounds) + " (" + duration(run.time) + " of pouring) into Make it Pour, with " +
-      levelsText() + " stocked." + rec;
+    return "I've played " + roundsText(run.rounds) + " of Make it Pour (" + duration(run.time) +
+      " of pouring) and bought " + levelsText() + "." + rec;
   }
 
   async function shareScore() {
@@ -1864,7 +1844,7 @@
     }
     try {
       await navigator.clipboard.writeText(full);
-      note.textContent = "Copied — paste it into a message.";
+      note.textContent = "Copied to clipboard.";
       return;
     } catch (e) {}
     window.open("sms:?&body=" + encodeURIComponent(full), "_blank");
@@ -1880,7 +1860,7 @@
     if (!resetArmed) { armReset(true); return; }
     resetProgress();
     armReset(false);
-    resetNote.textContent = "Done — the bar is back to opening night.";
+    resetNote.textContent = "Progress reset.";
   });
   infoScreen.addEventListener("click", (e) => {
     if (resetArmed && e.target !== resetBtn) armReset(false);   // any other tap backs out

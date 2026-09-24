@@ -347,7 +347,7 @@ test.describe("the climb", () => {
     expect(run.time).toBeGreaterThan(1);
     expect(run.time).toBeLessThan(3);
     expect(await lastShare(page)).toBe(
-      "I'm 2 rounds (0m 0" + Math.floor(run.time) + "s of pouring) into Make it Pour, with 0 of 27 upgrade levels stocked. Can you keep up?");
+      "I've played 2 rounds of Make it Pour (0m 0" + Math.floor(run.time) + "s of pouring) and bought 0 of 27 upgrade levels.");
   });
 
   test("a bar from before climbs were timed stays untimed", async ({ page }) => {
@@ -356,9 +356,9 @@ test.describe("the climb", () => {
     await page.keyboard.press("Enter");
     await finishRound(page);
     expect((await readSave(page)).run).toEqual({ timed: false, time: 0, rounds: 0, done: false });
-    expect(await lastShare(page)).toBe("I've stocked 1 of 27 upgrade levels in Make it Pour. Can you keep up?");
+    expect(await lastShare(page)).toBe("I've bought 1 of 27 upgrade levels in Make it Pour.");
     await page.click("#shopBtn");
-    await expect(page.locator("#runLine")).toContainText("Reset Everything starts a timed one");
+    await expect(page.locator("#runLine")).toContainText("Reset Everything starts a timed run");
   });
 
   test("the last level finishes the climb, sets the record, and a reset keeps only the record", async ({ page }) => {
@@ -375,10 +375,10 @@ test.describe("the climb", () => {
     expect(run).toMatchObject({ timed: true, rounds: 21, done: true });
     expect(run.time).toBeGreaterThan(3610);
     expect(record).toEqual({ time: run.time, rounds: 21 });
-    await expect(page.locator("#runLine")).toContainText("Whole bar stocked in 1h 00m");
+    await expect(page.locator("#runLine")).toContainText("Every upgrade bought in 1h 00m");
     await page.click("#shopCloseBtn");
     expect(await lastShare(page)).toMatch(
-      /^I stocked the whole bar in Make it Pour in 1h 00m \d\ds of pouring over 21 rounds\. Can you beat it\?$/);
+      /^I bought every upgrade in Make it Pour in 1h 00m \d\ds of pouring over 21 rounds\. Can you beat it\?$/);
 
     // More rounds after the finish do not move it.
     await page.keyboard.press("Enter");
@@ -393,7 +393,7 @@ test.describe("the climb", () => {
     expect(after).toMatchObject({ best: 0, tips: 0, owned: {}, record });
     expect(after.run).toEqual({ timed: true, time: 0, rounds: 0, done: false });
     expect(await lastShare(page)).toMatch(
-      /^I'm 0 rounds \(0m 00s of pouring\) into Make it Pour, with 0 of 27 upgrade levels stocked\. My fastest full bar: 1h 00m \d\ds of pouring over 21 rounds\. Can you beat it\?$/);
+      /^I've played 0 rounds of Make it Pour \(0m 00s of pouring\) and bought 0 of 27 upgrade levels\. My fastest run to every upgrade: 1h 00m \d\ds of pouring over 21 rounds\. Can you beat it\?$/);
   });
 
   test("a slower finish does not replace the record", async ({ page }) => {
@@ -407,6 +407,6 @@ test.describe("the climb", () => {
     await page.click("#shopBtn");
     await page.click('.up button[data-id="bubbles"]');
     expect((await readSave(page)).record).toEqual({ time: 3000, rounds: 30 });
-    await expect(page.locator("#runLine")).toContainText("Fastest full bar: 50m 00s of pouring over 30 rounds.");
+    await expect(page.locator("#runLine")).toContainText("Fastest run: 50m 00s of pouring over 30 rounds.");
   });
 });

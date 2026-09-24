@@ -135,10 +135,10 @@ The end-of-round screen has a **Share** button next to *Pour Again*. It hands th
 the page's URL to your device's share sheet (`navigator.share`), so you can fire it off as a
 text message, or into any other app the sheet offers:
 
-- **Once the bar is full:** "I stocked the whole bar in Make it Pour in 1h 02m 13s of pouring
+- **Once the bar is full:** "I bought every upgrade in Make it Pour in 1h 02m 13s of pouring
   over 24 rounds. Can you beat it?"
 - **Before that:** how many rounds and how much pouring so far, and how many of the 27
-  upgrade levels are stocked, plus your fastest full bar if you have one, for the other
+  upgrade levels are bought, plus your fastest full bar if you have one, for the other
   person to race.
 
 A bar that was already under way before climbs were timed has no honest start, so it stays
@@ -188,7 +188,7 @@ anywhere, and *Reset Everything* in the ℹ panel deletes the key.
 Vanilla HTML/CSS/JS on a single `<canvas>` — no dependencies, no bundler. The only network
 traffic is a once-a-minute check of `index.html` itself: if its contents change (a matching
 `ETag`, or `Last-Modified` from hosts that send no `ETag`, counts as unchanged, since some
-hosts inject per-request bytes into the page), a small "There's an update — refresh" notice
+hosts inject per-request bytes into the page), a small "A new version is available. Reload" notice
 appears in the bottom right. A check that fails, takes longer than 10 seconds, or gets back
 something other than the game (a host's maintenance page, say) is ignored and retried on the
 next tick. The check is skipped when the page is opened over `file:`. Pointer Events unify
