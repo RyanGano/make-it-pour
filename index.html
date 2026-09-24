@@ -1505,7 +1505,9 @@
 
     const barW = Math.min(280, W * 0.4);
     const barX = (W - barW) / 2;
-    const barY = top + 8;
+    // The pause, info and mute buttons take the top right corner. On a narrow screen the
+    // centred bar would run under them, so it drops below them instead.
+    const barY = barX + barW > W - 162 ? 66 : top + 8;
     ctx.fillStyle = "rgba(255,255,255,.12)";
     roundRect(barX, barY, barW, 10, 5);
     ctx.fill();
