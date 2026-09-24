@@ -348,6 +348,24 @@ test.describe("overlays", () => {
     expect(heading.y).toBeGreaterThanOrEqual(controls.y + controls.height);
   });
 
+  test("on a phone the timer bar is not drawn under the corner buttons", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 780 });
+    await open(page);
+    await page.keyboard.press("Enter");
+    await page.clock.runFor(200);
+    const box = await page.locator("#controls").boundingBox();
+    // Any bar-coloured pixel in the canvas behind the buttons is the timer running under them.
+    const hidden = await page.evaluate(({ x, y, w, h }) => {
+      const c = document.getElementById("game");
+      const k = c.width / c.getBoundingClientRect().width;
+      const d = c.getContext("2d").getImageData(x * k, y * k, w * k, h * k).data;
+      let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i] < 120 && d[i + 1] > 200 && d[i + 2] > 230) n++;
+      return n;
+    }, { x: box.x, y: box.y, w: box.width, h: box.height });
+    expect(hidden).toBe(0);
+  });
+
   test("the info panel opens above the shop", async ({ page }) => {
     await open(page, { short: true });
     await page.keyboard.press("Enter");
