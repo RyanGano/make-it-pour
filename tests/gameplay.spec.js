@@ -257,3 +257,98 @@ test.describe("resilience", () => {
     expect(draws).toBeGreaterThan(0);
   });
 });
+
+test.describe("the climb", () => {
+  // Every upgrade maxed but Bubble Trouble's last level, at top rank with the tips for it.
+  const ALMOST = { reach: 3, clock: 3, tipsize: 3, pour: 3, sip: 2, mult: 4, gold: 3, combo: 3, bubbles: 2 };
+
+  // Stands in for the share sheet and records what it was handed.
+  async function captureShares(page) {
+    await page.addInitScript(() => {
+      window.shared = [];
+      navigator.share = async (data) => { window.shared.push(data.text); };
+    });
+  }
+  const lastShare = async (page) => {
+    await page.click("#shareBtn");
+    return page.evaluate(() => window.shared[window.shared.length - 1]);
+  };
+
+  test("a fresh bar times its rounds, and pauses do not count", async ({ page }) => {
+    await captureShares(page);
+    await openGame(page, server.base, { short: true });
+    await page.keyboard.press("Enter");
+    await finishRound(page);
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("p");
+    await page.clock.runFor(60000);   // a minute paused
+    await page.keyboard.press("p");
+    await finishRound(page);
+    const { run } = await readSave(page);
+    expect(run).toMatchObject({ timed: true, rounds: 2, done: false });
+    expect(run.time).toBeGreaterThan(1);
+    expect(run.time).toBeLessThan(3);
+    expect(await lastShare(page)).toBe(
+      "I'm 2 rounds (0m 0" + Math.floor(run.time) + "s of pouring) into Make it Pour, with 0 of 27 upgrade levels stocked. Can you keep up?");
+  });
+
+  test("a bar from before climbs were timed stays untimed", async ({ page }) => {
+    await captureShares(page);
+    await openGame(page, server.base, { short: true, save: { v: 2, best: 0, tips: 0, owned: { reach: 1 } } });
+    await page.keyboard.press("Enter");
+    await finishRound(page);
+    expect((await readSave(page)).run).toEqual({ timed: false, time: 0, rounds: 0, done: false });
+    expect(await lastShare(page)).toBe("I've stocked 1 of 27 upgrade levels in Make it Pour. Can you keep up?");
+    await page.click("#shopBtn");
+    await expect(page.locator("#runLine")).toContainText("Reset Everything starts a timed one");
+  });
+
+  test("the last level finishes the climb, sets the record, and a reset keeps only the record", async ({ page }) => {
+    await captureShares(page);
+    await openGame(page, server.base, {
+      short: true,
+      save: { v: 2, best: 90000, tips: 2000, owned: ALMOST, run: { timed: true, time: 3600, rounds: 20, done: false } }
+    });
+    await page.keyboard.press("Enter");
+    await page.clock.runFor(30000);   // Deep Pockets makes it a 16-second round
+    await page.click("#shopBtn");
+    await page.click('.up button[data-id="bubbles"]');
+    const { run, record } = await readSave(page);
+    expect(run).toMatchObject({ timed: true, rounds: 21, done: true });
+    expect(run.time).toBeGreaterThan(3610);
+    expect(record).toEqual({ time: run.time, rounds: 21 });
+    await expect(page.locator("#runLine")).toContainText("Whole bar stocked in 1h 00m");
+    await page.click("#shopCloseBtn");
+    expect(await lastShare(page)).toMatch(
+      /^I stocked the whole bar in Make it Pour in 1h 00m \d\ds of pouring over 21 rounds\. Can you beat it\?$/);
+
+    // More rounds after the finish do not move it.
+    await page.keyboard.press("Enter");
+    await page.clock.runFor(30000);
+    expect((await readSave(page)).run).toEqual(run);
+
+    await page.click("#info");
+    await page.click("#resetBtn");
+    await page.click("#resetBtn");
+    await page.click("#infoCloseBtn");
+    const after = await readSave(page);
+    expect(after).toMatchObject({ best: 0, tips: 0, owned: {}, record });
+    expect(after.run).toEqual({ timed: true, time: 0, rounds: 0, done: false });
+    expect(await lastShare(page)).toMatch(
+      /^I'm 0 rounds \(0m 00s of pouring\) into Make it Pour, with 0 of 27 upgrade levels stocked\. My fastest full bar: 1h 00m \d\ds of pouring over 21 rounds\. Can you beat it\?$/);
+  });
+
+  test("a slower finish does not replace the record", async ({ page }) => {
+    await openGame(page, server.base, {
+      short: true,
+      save: { v: 2, best: 90000, tips: 2000, owned: ALMOST,
+              run: { timed: true, time: 9000, rounds: 40, done: false }, record: { time: 3000, rounds: 30 } }
+    });
+    await page.keyboard.press("Enter");
+    await page.clock.runFor(30000);
+    await page.click("#shopBtn");
+    await page.click('.up button[data-id="bubbles"]');
+    expect((await readSave(page)).record).toEqual({ time: 3000, rounds: 30 });
+    await expect(page.locator("#runLine")).toContainText("Fastest full bar: 50m 00s of pouring over 30 rounds.");
+  });
+});
