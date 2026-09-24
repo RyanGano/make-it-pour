@@ -116,18 +116,35 @@ survives a reload**. The climb is long enough now that losing a night's tips to 
 refresh was the wrong kind of hard.
 
 To start over deliberately, open the **ℹ** panel and use **Reset Everything** under *Start
-Over*. It asks twice, then wipes the save: no tips, no stock, rank 1, no best score.
+Over*. It asks twice, then wipes the save: no tips, no stock, rank 1, no best score, and a
+fresh timed climb (see below). The one thing it keeps is your fastest full bar, so there is
+something to race.
 
 The save is versioned. A save written by an older version of the game is discarded rather
 than guessed at, which is how the scoring rewrite cleared every pre-rewrite high score once —
 those were earned under rules that no longer exist.
 
-## Sharing a score
+## Sharing your climb
 
-The end-of-round screen has a **Share** button next to *Pour Again*. It hands your score, the
-number of cups you filled, and the page's URL to your device's share sheet
-(`navigator.share`), so you can fire it off as a text message, or into any other app the
-sheet offers. If the browser has no share sheet, the message is copied to the clipboard
+The game times the **climb** from an empty bar to a full one: every upgrade bought to its
+last level. Two numbers make up a climb: the **time spent pouring**, which counts only
+rounds in play (pauses, the shop, menus and time away don't count), and the **number of
+rounds** it took. The shop shows where the current climb stands, and your fastest full bar.
+
+The end-of-round screen has a **Share** button next to *Pour Again*. It hands the climb and
+the page's URL to your device's share sheet (`navigator.share`), so you can fire it off as a
+text message, or into any other app the sheet offers:
+
+- **Once the bar is full:** "I stocked the whole bar in Make it Pour in 1h 02m 13s of pouring
+  over 24 rounds. Can you beat it?"
+- **Before that:** how many rounds and how much pouring so far, and how many of the 27
+  upgrade levels are stocked, plus your fastest full bar if you have one, for the other
+  person to race.
+
+A bar that was already under way before climbs were timed has no honest start, so it stays
+untimed and shares only how many levels it has. *Reset Everything* starts a timed climb.
+
+If the browser has no share sheet, the message is copied to the clipboard
 instead ("Copied — paste it into a message."); if the clipboard is unavailable too, it falls
 back to an `sms:` link. Nothing is shared unless you tap the button, and the game never sends
 the message itself — your messaging app does.
@@ -162,7 +179,7 @@ minute to notice a new deploy, and it carries no information about you.
   slide faster the longer you survive *and* the more cups you fill — so a hot streak buys
   time while it also outruns you. That's what ends the game, not a bonus cap.
 
-Your best score, tips, rank and upgrades are all stored locally in the browser under a single
+Your best score, tips, rank, upgrades and climb are all stored locally in the browser under a single
 versioned `makeItPourSave` key, written after every round and every purchase. Nothing is sent
 anywhere, and *Reset Everything* in the ℹ panel deletes the key.
 
@@ -198,8 +215,8 @@ test can reach the end screen quickly) and use Playwright's fake clock to fast-f
 - `tests/update-check.spec.js` points the deploy check at a server that plays each kind of
   host (hung requests, dropped `ETag`s, maintenance pages, per-request bytes, real deploys).
 - `tests/gameplay.spec.js` covers bot-played rounds, saves and their compatibility, reset,
-  number formatting in other locales, Steady Hands on short screens, and surviving audio and
-  frame errors.
+  number formatting in other locales, Steady Hands on short screens, the timed climb and what
+  Share sends, and surviving audio and frame errors.
 
 Most of these cases were real bugs at some point; the tests keep them fixed. GitHub Actions
 runs them on every push to `main` and on every pull request (`.github/workflows/test.yml`),
