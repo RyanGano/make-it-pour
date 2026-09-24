@@ -188,6 +188,15 @@
   .rank-bar span { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
   .rank-next { font-size: 12px; color: var(--muted); text-align: right; max-width: 55%; }
   .up-list { display: flex; flex-direction: column; gap: 10px; }
+  #hideMaxedBtn {
+    align-self: flex-end;
+    margin-top: 0;
+    padding: 7px 12px;
+    font-size: 12px;
+    border-radius: 10px;
+  }
+  #hideMaxedBtn[hidden] { display: none; }
+  #maxedNote:empty { display: none; }
   .up.locked { opacity: .55; border-style: dashed; }
   .up.locked button { background: rgba(255,210,90,.12); color: #ffd25a; }
   .up {
@@ -374,7 +383,9 @@
       this, and costs you a point of combo every time. <strong>Filling</strong> pays the score
       that earns your rank, and rank is what the bar will sell you. What you buy stays with you
       for every round, and this browser remembers it between visits.</p>
+    <button id="hideMaxedBtn" class="secondary" hidden></button>
     <div class="up-list" id="upList"></div>
+    <p class="hint" id="maxedNote" style="text-align:center"></p>
     <button id="shopCloseBtn">Back to the Bar</button>
   </div>
 </div>
@@ -397,6 +408,7 @@
   const shopScreen = document.getElementById("shopScreen");
   const shopBtn = document.getElementById("shopBtn");
   const upList = document.getElementById("upList");
+  const hideMaxedBtn = document.getElementById("hideMaxedBtn");
   const resetBtn = document.getElementById("resetBtn");
   const resetNote = document.getElementById("resetNote");
 
@@ -1684,6 +1696,19 @@
   }
 
   // ------------------------------------------------------------- shop
+  // Hiding maxed upgrades is a preference, not progress, so like the sound switch it has
+  // its own key: it outlives a reset and a save-version bump, and a bar that is nearly
+  // full keeps its short list from one visit to the next.
+  const HIDE_MAXED_KEY = "makeItPourHideMaxed";
+  let hideMaxed = false;
+  try { hideMaxed = localStorage.getItem(HIDE_MAXED_KEY) === "on"; } catch (e) {}
+
+  hideMaxedBtn.addEventListener("click", () => {
+    hideMaxed = !hideMaxed;
+    try { localStorage.setItem(HIDE_MAXED_KEY, hideMaxed ? "on" : "off"); } catch (e) {}
+    renderShop();
+  });
+
   function renderShop() {
     const r = rank();
     const next = nextRank();
@@ -1696,10 +1721,21 @@
       : "Top rank — the whole bar is open to you.";
     document.getElementById("runLine").textContent = runSummary();
 
+    // The toggle only shows once there is something to hide, and while it hides anything
+    // it names how many, so the way back is always on screen next to the shorter list.
+    const maxedCount = UPGRADES.filter((u) => lvl(u.id) >= u.costs.length).length;
+    hideMaxedBtn.hidden = maxedCount === 0;
+    hideMaxedBtn.textContent = hideMaxed
+      ? "Show " + num(maxedCount) + " maxed"
+      : "Hide maxed";
+    document.getElementById("maxedNote").textContent =
+      hideMaxed && maxedCount === UPGRADES.length ? "Every upgrade is maxed." : "";
+
     upList.innerHTML = "";
     for (const u of UPGRADES) {
       const n = lvl(u.id);
       const maxed = n >= u.costs.length;
+      if (maxed && hideMaxed) continue;
       const locked = u.rank > r;
       const cost = maxed ? 0 : u.costs[n];
 
