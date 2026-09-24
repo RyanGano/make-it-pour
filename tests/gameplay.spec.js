@@ -103,6 +103,64 @@ test.describe("saves", () => {
   });
 });
 
+test.describe("hiding maxed upgrades", () => {
+  const rows = (page) => page.locator("#upList .up");
+
+  test("the toggle hides maxed rows, is remembered across reloads and resets, and undoes", async ({ page }) => {
+    await openGame(page, server.base, { short: true, save: { v: 2, best: 0, tips: 1000, owned: { reach: 3, clock: 3 } } });
+    await page.keyboard.press("Enter");
+    await finishRound(page);
+    await page.click("#shopBtn");
+    const all = await rows(page).count();
+    await expect(page.locator("#hideMaxedBtn")).toHaveText("Hide maxed");
+    await page.click("#hideMaxedBtn");
+    await expect(rows(page)).toHaveCount(all - 2);
+    await expect(page.locator('button[data-id="reach"]')).toHaveCount(0);
+    await expect(page.locator("#hideMaxedBtn")).toHaveText("Show 2 maxed");
+
+    // Buying the last level of an upgrade takes it off the list while hiding is on.
+    await page.click('button[data-id="tipsize"]');   // 190 - level 1 of 3
+    await expect(rows(page)).toHaveCount(all - 2);
+
+    await page.reload();
+    await page.keyboard.press("Enter");
+    await finishRound(page);
+    await page.click("#shopBtn");
+    await expect(rows(page)).toHaveCount(all - 2);
+    await expect(page.locator("#hideMaxedBtn")).toHaveText("Show 2 maxed");
+
+    await page.click("#hideMaxedBtn");
+    await expect(rows(page)).toHaveCount(all);
+    await expect(page.locator("#hideMaxedBtn")).toHaveText("Hide maxed");
+    await page.click("#hideMaxedBtn");
+
+    // A fresh bar has nothing maxed, so no toggle - but the choice is kept for the next climb.
+    await page.click("#shopCloseBtn");
+    await page.click("#info");
+    await page.click("#resetBtn");
+    await page.click("#resetBtn");
+    await page.click("#infoCloseBtn");
+    expect(await page.evaluate(() => localStorage.getItem("makeItPourHideMaxed"))).toBe("on");
+    await page.click("#shopBtn");
+    await expect(page.locator("#hideMaxedBtn")).toBeHidden();
+    await expect(rows(page)).toHaveCount(all);
+  });
+
+  test("a full bar with maxed rows hidden says so instead of showing an empty list", async ({ page }) => {
+    await openGame(page, server.base, {
+      short: true,
+      save: { v: 2, best: 1e7, tips: 0, owned: { reach: 9, clock: 9, tipsize: 9, pour: 9, sip: 9, mult: 9, gold: 9, combo: 9, bubbles: 9 } }
+    });
+    await page.keyboard.press("Enter");
+    await finishRound(page);
+    await page.click("#shopBtn");
+    await page.click("#hideMaxedBtn");
+    await expect(rows(page)).toHaveCount(0);
+    await expect(page.locator("#maxedNote")).toHaveText("Every upgrade is maxed.");
+    await expect(page.locator("#hideMaxedBtn")).toHaveText("Show 9 maxed");
+  });
+});
+
 test.describe("numbers", () => {
   test("the info panel quotes the game's own numbers", async ({ page }) => {
     await openGame(page, server.base);

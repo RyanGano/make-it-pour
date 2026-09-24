@@ -98,6 +98,32 @@ test.describe("keyboard-chosen buttons", () => {
     expect(await screens(page)).toMatchObject({ shop: false, playing: true });
   });
 
+  test("Enter and Space on the Hide maxed toggle flip it and leave the shop open", async ({ page }) => {
+    await open(page, { save: { ...RICH, owned: { reach: 3 } }, short: true });
+    await page.keyboard.press("Enter");
+    await finishRound(page);
+    await page.keyboard.press("KeyU");
+    await tabTo(page, "#hideMaxedBtn");
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#hideMaxedBtn")).toHaveText("Show 1 maxed");
+    await page.keyboard.press("Space");
+    await expect(page.locator("#hideMaxedBtn")).toHaveText("Hide maxed");
+    expect(await screens(page)).toMatchObject({ focus: "hideMaxedBtn", shop: true });
+  });
+
+  test("buying the last level while maxed rows are hidden moves focus to Back to the Bar", async ({ page }) => {
+    await open(page, { save: RICH, short: true });
+    await page.evaluate(() => localStorage.setItem("makeItPourHideMaxed", "on"));
+    await page.reload();
+    await page.keyboard.press("Enter");
+    await finishRound(page);
+    await page.keyboard.press("KeyU");
+    await tabTo(page, 'button[data-id="reach"]');
+    for (let i = 0; i < 3; i++) await page.keyboard.press("Enter");
+    await expect(page.locator('button[data-id="reach"]')).toHaveCount(0);
+    expect(await screens(page)).toMatchObject({ focus: "shopCloseBtn", shop: true });
+  });
+
   test("I over a Tab-focused Upgrades, then Enter, closes only the info panel", async ({ page }) => {
     await open(page, { short: true });
     await page.keyboard.press("Enter");
