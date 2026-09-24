@@ -49,7 +49,7 @@ test.describe("held keys", () => {
     await page.keyboard.down("NumpadEnter");
     await page.keyboard.up("NumpadEnter");
     expect(await page.evaluate(() => localStorage.getItem("makeItPourSave"))).not.toBeNull();
-    await expect(page.locator("#resetBtn")).toHaveText("Tap again to wipe it");
+    await expect(page.locator("#resetBtn")).toHaveText("Tap again to confirm");
   });
 
   test("held NumpadEnter on a buy button buys one level; two presses buy two", async ({ page }) => {
@@ -93,7 +93,7 @@ test.describe("keyboard-chosen buttons", () => {
     for (let i = 0; i < 3; i++) await page.keyboard.press("Enter");
     await expect(page.locator("#tipsCount")).toHaveText("3,790");
     expect(await screens(page)).toMatchObject({ focus: "shopCloseBtn", shop: true });
-    await page.keyboard.press("Enter");   // Back to the Bar
+    await page.keyboard.press("Enter");   // Done
     await page.keyboard.press("Enter");   // start
     expect(await screens(page)).toMatchObject({ shop: false, playing: true });
   });
@@ -111,7 +111,7 @@ test.describe("keyboard-chosen buttons", () => {
     expect(await screens(page)).toMatchObject({ focus: "hideMaxedBtn", shop: true });
   });
 
-  test("buying the last level while maxed rows are hidden moves focus to Back to the Bar", async ({ page }) => {
+  test("buying the last level while maxed rows are hidden moves focus to Done", async ({ page }) => {
     await open(page, { save: RICH, short: true });
     await page.evaluate(() => localStorage.setItem("makeItPourHideMaxed", "on"));
     await page.reload();
@@ -158,7 +158,7 @@ test.describe("keyboard-chosen buttons", () => {
     }
   });
 
-  test("Tab in the info panel never reaches Start Pouring", async ({ page }) => {
+  test("Tab in the info panel never reaches Play", async ({ page }) => {
     await open(page);
     await page.click("#info");
     for (let i = 0; i < 6; i++) {
